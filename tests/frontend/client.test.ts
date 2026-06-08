@@ -23,6 +23,19 @@ test('readConnParams reads port and token from a query string', () => {
   expect(readConnParams('?port=1234&token=abc')).toEqual({ port: '1234', token: 'abc' })
 })
 
+test('readConnParams prefers the injected window.__DBCLI__ global over the query string', () => {
+  ;(globalThis as { __DBCLI__?: unknown }).__DBCLI__ = { port: 9999, token: 'injected' }
+  try {
+    expect(readConnParams('?port=1&token=fromquery')).toEqual({ port: '9999', token: 'injected' })
+  } finally {
+    delete (globalThis as { __DBCLI__?: unknown }).__DBCLI__
+  }
+})
+
+test('readConnParams falls back to the query string when no global is injected', () => {
+  expect(readConnParams('?port=1234&token=abc')).toEqual({ port: '1234', token: 'abc' })
+})
+
 test('query() POSTs to the right URL with bearer token and parses the body', async () => {
   const calls = stubFetch(() => jsonRes({ rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 5 }))
   const client = makeClient('http://127.0.0.1:1234', 'tok')

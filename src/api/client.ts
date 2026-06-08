@@ -16,8 +16,20 @@ export class ApiError extends Error {
   }
 }
 
-/** Read port + token injected via the URL query string (dev harness or Tauri shell). */
+interface InjectedConnParams {
+  port?: number | string
+  token?: string
+}
+
+/**
+ * Read port + token. The Tauri shell injects `window.__DBCLI__` before any page
+ * script runs; the dev harness uses the URL query string. Global wins when present.
+ */
 export function readConnParams(search: string = location.search): { port: string; token: string } {
+  const injected = (globalThis as { __DBCLI__?: InjectedConnParams }).__DBCLI__
+  if (injected?.port != null && injected?.token != null) {
+    return { port: String(injected.port), token: String(injected.token) }
+  }
   const params = new URLSearchParams(search)
   return { port: params.get('port') ?? '', token: params.get('token') ?? '' }
 }
