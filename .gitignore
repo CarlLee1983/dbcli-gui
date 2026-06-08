@@ -39,3 +39,6 @@ src-tauri/target/
 
 # dbcli runtime artifacts (audit logs, session ids) written during tests
 .dbcli/
+
+# Claude Code local runtime (scheduled-task lock, etc.)
+.claude/scheduled_tasks.lock

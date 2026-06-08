@@ -82,3 +82,13 @@ test('SELECT on a blacklisted table returns 403 BLACKLISTED', async () => {
   const body = await res.json() as { error: { code: string } }
   expect(body.error.code).toBe('BLACKLISTED')
 })
+
+test('SELECT response includes ordered fields and ms timing', async () => {
+  const s = start([{ id: 1, name: 'a' }])
+  await post(s, '/connections/open', { connectionId: 'main' })
+  const res = await post(s, '/query', { connectionId: 'main', sql: 'SELECT * FROM t' })
+  expect(res.status).toBe(200)
+  const body = await res.json() as { fields: string[] }
+  expect(body.fields).toEqual(['id', 'name'])
+  expect('ms' in body).toBe(true) // number, or null when the adapter reports no timing
+})

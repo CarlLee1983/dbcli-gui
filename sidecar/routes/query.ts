@@ -1,11 +1,10 @@
 import { QueryExecutor, BlacklistManager, BlacklistValidator } from '@carllee1983/dbcli/core'
 import type { ConnectionPool } from '../connection-pool'
 import { QueryBody } from '../../shared/schemas'
-import { toErrorBody } from '../../shared/errors'
+import { toErrorBody, CLIENT_ERROR_CODES } from '../../shared/errors'
 import { json } from '../http'
 
 const DEFAULT_LIMIT = 1000
-const CLIENT_ERROR_CODES = new Set(['PERMISSION', 'BLACKLISTED'])
 
 export function makeQueryHandler(pool: ConnectionPool) {
   return async function query(req: Request): Promise<Response> {
@@ -23,7 +22,12 @@ export function makeQueryHandler(pool: ConnectionPool) {
         autoLimit: true,
         limitValue: parsed.data.limit ?? DEFAULT_LIMIT,
       })
-      return json({ rows: result.rows, rowCount: result.rowCount })
+      return json({
+        rows: result.rows,
+        fields: result.columnNames,
+        rowCount: result.rowCount,
+        ms: result.executionTimeMs ?? null,
+      })
     } catch (err) {
       const body = toErrorBody(err)
       const status = CLIENT_ERROR_CODES.has(body.error.code) ? 403 : 500
