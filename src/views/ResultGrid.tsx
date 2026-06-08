@@ -64,9 +64,9 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
                 <th
                   key={f}
                   onClick={() => onHeaderClick(f)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') onHeaderClick(f) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHeaderClick(f) } }}
                   tabIndex={0}
-                  aria-sort={sortField === f ? (sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none') : 'none'}
+                  aria-sort={sortField === f ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
                   className="cursor-pointer select-none border-b border-gray-300 px-3 py-1 text-left font-medium"
                 >
                   {f}
