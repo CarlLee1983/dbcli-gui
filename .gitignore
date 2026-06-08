@@ -37,6 +37,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 dist/
 src-tauri/target/
 
+# Tauri generated (regenerated on every build)
+src-tauri/gen/
+app-icon.png
+
 # dbcli runtime artifacts (audit logs, session ids) written during tests
 .dbcli/
 
