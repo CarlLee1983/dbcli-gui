@@ -26,8 +26,9 @@ test('renders cell values', () => {
 
 test('footer shows rowCount and ms', () => {
   render(<ResultGrid result={small} />)
-  expect(screen.getByText(/2/)).toBeDefined()
-  expect(screen.getByText(/7/)).toBeDefined()
+  const footer = screen.getByText(/列/)
+  expect(footer.textContent).toContain('2')
+  expect(footer.textContent).toContain('7 ms')
 })
 
 test('clicking a header sorts ascending by that column', () => {

@@ -87,15 +87,8 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
           </tbody>
         </table>
       </div>
-      {/* data-count is read by the CSS rule below; kept out of text nodes so tests
-          can query /rowCount/ and /ms/ independently without cross-contamination. */}
-      <style>{`.rg-footer[data-count]::before{content:attr(data-count)" 列 · "}`}</style>
-      <footer
-        data-count={String(result.rowCount)}
-        className="rg-footer border-t border-gray-200 px-3 py-1 text-xs text-gray-500"
-        aria-label={`${result.rowCount} 列${result.ms !== null ? ` · ${result.ms} ms` : ''}`}
-      >
-        {result.ms !== null ? `${result.ms} ms` : ''}
+      <footer className="border-t border-gray-200 px-3 py-1 text-xs text-gray-500">
+        {result.rowCount} 列{result.ms !== null ? ` · ${result.ms} ms` : ''}
       </footer>
     </div>
   )
