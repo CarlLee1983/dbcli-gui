@@ -14,8 +14,8 @@
 
 - Tauri v2 殼,以 `cargo tauri dev`(經 `bun run tauri dev`)開原生 webview 視窗。
 - Rust 殼負責 sidecar 完整生命週期:spawn → 讀 ready-line → 開窗注入 port/token → 收尾。
-- 前端與 sidecar 兩層**零改動**(除非 query 穿透 spike 失敗,見 §6)。
-- Rust 純函式 `parse_ready_line` 的 TDD 單元測試。
+- **sidecar 層零改動**;**前端僅 `src/api/client.ts` 的 `readConnParams` 增加讀取注入全域**(約數行,見 §6)。
+- Rust 純函式 `parse_ready_line` 的 TDD 單元測試;前端 `readConnParams` 新來源的單元測試。
 
 ### 本輪不做(out of scope,留後續獨立 spec)
 
@@ -36,15 +36,18 @@ bun run tauri dev
   └─ Rust setup():
        spawn `bun run sidecar/index.ts`         (cwd = repo root)
        讀第一行 stdout {ready,port,token}
-       開 WebviewWindow → WebviewUrl::App("index.html?port=X&token=Y")
-       │  前端 readConnParams() 讀 location.search  ← 零改動
+       開 WebviewWindow → WebviewUrl::App("index.html")
+         + initialization_script: window.__DBCLI__ = { port, token }
+       │  前端 readConnParams() 優先讀 window.__DBCLI__,退回 location.search
        └─ fetch http://localhost:X (Authorization: Bearer token) → sidecar
   視窗關閉 / sidecar 自己死 → kill 子程序 + app 退出
 ```
 
-**切分理由**:前端早已用 `src/api/client.ts` 的 `readConnParams()`(讀 `location.search`,
-註解明載「dev harness or Tauri shell」)預留好注入點,故殼以 query string 注入 → 前端零改動。
-dist 資產為相對路徑(`./chunk-*`),適配 Tauri asset protocol。
+**注入機制決定**:`WebviewUrl::App` 把路徑當檔名,**不保留 query string**(已查證),
+故不能用 `index.html?port=X` 注入。改用 `WebviewWindowBuilder::initialization_script`
+在頁面任何腳本執行前注入全域 `window.__DBCLI__ = { port, token }`,前端 `readConnParams`
+優先讀此全域、退回 `location.search`(dev harness 仍走 query)。dist 資產為相對路徑
+(`./chunk-*`),適配 Tauri asset protocol。
 
 ## 3. 元件
 
@@ -56,7 +59,12 @@ dist 資產為相對路徑(`./chunk-*`),適配 Tauri asset protocol。
 | `src-tauri/tauri.conf.json` | `build.frontendDist:"../dist"`、`build.beforeDevCommand:"bun run build"`、無靜態 window(程式建立)、CSP 放行 localhost(§6) |
 | `src-tauri/build.rs` | `fn main() { tauri_build::build() }` |
 | `src-tauri/src/main.rs` | 進入點 + 生命週期邏輯 + `parse_ready_line` |
-| `src-tauri/icons/` | placeholder 圖示(`tauri icon` 產生) |
+
+前端唯一改動:
+
+| 檔案 | 改動 |
+|------|------|
+| `src/api/client.ts` | `readConnParams` 優先讀 `window.__DBCLI__`,退回 `location.search`(數行) |
 
 工具鏈接線:
 
@@ -84,9 +92,9 @@ struct ReadyLine { port: u16, token: String }
    - `repo_root` 以 `env!("CARGO_MANIFEST_DIR")` 的上一層解析(dev-only 範圍,可接受)。
    - sidecar 依現有 `config.ts` 自帶隨機 port + token,殼不需自行產生。
 2. 以 `BufReader` 讀子程序 stdout **首行** → `parse_ready_line` → 取得 `port`、`token`。
-3. `WebviewWindowBuilder::new(app, "main",
-   WebviewUrl::App(format!("index.html?port={port}&token={token}").into()))`
-   設定 title / 預設尺寸後 `.build()`。
+3. `WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))`
+   `.initialization_script(&format!("window.__DBCLI__ = {{ port: {port}, token: {token:?} }};"))`
+   設定 title / 預設尺寸後 `.build()`。token 為 hex(無特殊字元),`{:?}` 產生安全的帶引號字串。
 4. `Child` 存入 Tauri managed state `Mutex<Option<Child>>`,供收尾使用。
 
 ### 4.3 收尾
@@ -106,25 +114,25 @@ spawn + 讀 stdout 採 **`std::process::Command` + thread**(零外掛、免 capa
 - **sidecar 啟動後死亡**:§4.3 的 wait thread 觸發 `exit(0)`,app 乾淨退出(不自動重啟 — 留後續)。
 - **視窗關閉**:`ExitRequested` 殺 sidecar,避免孤兒程序。
 
-## 6. 必須早驗的整合風險
+## 6. 整合風險
 
-1. **CSP(致命)**:前端全程 `fetch http://localhost:<port>`。Tauri v2 預設 CSP 會擋。
+1. **CSP(致命,須早驗)**:前端全程 `fetch http://localhost:<port>`。Tauri v2 預設 CSP 會擋。
    `tauri.conf.json` 的 `app.security.csp` 須含:
    `connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:*`;
    Google Fonts 另需 `style-src` / `font-src` 放行 `https://fonts.googleapis.com` /
-   `https://fonts.gstatic.com`(或接受退回系統字型)。
-2. **query 穿透 asset protocol**:`WebviewUrl::App("index.html?...")` 的 query 須能進到
-   `window.location.search`。**第一步先做 spike 驗證**。
-   - Fallback:若 query 不穿透,改用 `WebviewWindowBuilder::initialization_script` 注入
-     `window.__DBCLI__ = { port, token }`,並讓 `src/api/client.ts` 的 `readConnParams`
-     多讀此來源(那才需動到前端少數幾行)。
+   `https://fonts.gstatic.com`(或接受退回系統字型)。**Task 4 整合執行時實證**。
+2. **注入機制(已查證並定案)**:`WebviewUrl::App` 把路徑當檔名,**不保留 query string**,
+   故不走 `index.html?port=...`。改用 `WebviewWindowBuilder::initialization_script` 在頁面
+   任何腳本前注入 `window.__DBCLI__ = { port, token }`;`src/api/client.ts` 的 `readConnParams`
+   優先讀此全域、退回 `location.search`(dev harness 走 query 不受影響)。
 
 ## 7. 測試策略
 
 - **單元(Rust)**:`parse_ready_line` 三案,TDD 先紅後綠(`cargo test`)。
+- **單元(前端)**:`readConnParams` 讀 `window.__DBCLI__` 的新案,加進 `tests/frontend/client.test.ts`。
 - **手動 smoke**:`bun run tauri dev` 開窗 → Sidebar 列連線 → 跑查詢 → 看結果 → 匯出;
   寫進 README「桌面開發」段落。
-- **既有套件**:`bun test`(117 pass)維持全綠,本輪不應動到 sidecar/前端而破壞。
+- **既有套件**:`bun test`(117 pass + 新案)維持全綠,sidecar 層不動。
 - **自動化 E2E**:本輪不做。
 
 ## 8. 驗收標準
