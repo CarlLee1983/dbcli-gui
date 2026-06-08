@@ -12,7 +12,7 @@ export function Editor({ sql, loading, onChange, onRun }: EditorProps) {
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      onRun()
+      if (!loading) onRun()
     }
   }
   return (
@@ -21,6 +21,7 @@ export function Editor({ sql, loading, onChange, onRun }: EditorProps) {
         value={sql}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
+        aria-label="SQL 查詢"
         spellCheck={false}
         placeholder="SELECT * FROM …   (Cmd/Ctrl+Enter 執行)"
         className="h-20 flex-1 resize-y rounded border border-gray-300 p-2 font-mono text-sm focus:border-gray-500 focus:outline-none"

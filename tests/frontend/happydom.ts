@@ -9,21 +9,6 @@ import { GlobalRegistrator } from '@happy-dom/global-registrator'
 // Strategy: snapshot every global Bun already had, register happy-dom, then
 // restore those native descriptors. Globals that did not exist before
 // registration (the actual DOM) are left as happy-dom installed them.
-//
-// Exception: DOM event classes (Event, EventTarget, CustomEvent, InputEvent,
-// etc.) must remain as happy-dom's versions. happy-dom's dispatchEvent checks
-// `event instanceof Event` using its own Event class, so restoring Bun's native
-// Event constructor would cause that check to fail when fireEvent.change() is
-// called from @testing-library/dom.
-const DOM_EVENT_CLASSES = new Set([
-  'Event', 'EventTarget', 'CustomEvent', 'InputEvent', 'UIEvent',
-  'MouseEvent', 'KeyboardEvent', 'FocusEvent', 'WheelEvent',
-  'PointerEvent', 'TouchEvent', 'DragEvent', 'ClipboardEvent',
-  'CompositionEvent', 'AnimationEvent', 'TransitionEvent',
-  'MessageEvent', 'ErrorEvent', 'ProgressEvent', 'StorageEvent',
-  'HashChangeEvent', 'PopStateEvent', 'PageTransitionEvent',
-])
-
 const nativeDescriptors = new Map<string, PropertyDescriptor>()
 for (const key of Object.getOwnPropertyNames(globalThis)) {
   const desc = Object.getOwnPropertyDescriptor(globalThis, key)
@@ -32,9 +17,14 @@ for (const key of Object.getOwnPropertyNames(globalThis)) {
 
 GlobalRegistrator.register({ url: 'http://localhost:3000/?port=9999&token=test-token' })
 
+// happy-dom's dispatchEvent does `event instanceof Event` against ITS OWN Event
+// class, so we must NOT restore Bun's native Event/EventTarget/*Event globals —
+// fireEvent would otherwise construct events happy-dom rejects. Everything else
+// (Response/Request/Headers/fetch, URL, crypto, ...) is restored to native.
+const isDomEventClass = (key: string) => key === 'EventTarget' || key.endsWith('Event')
+
 for (const [key, desc] of nativeDescriptors) {
-  // Keep happy-dom's DOM event classes so that dispatchEvent instanceof checks pass.
-  if (DOM_EVENT_CLASSES.has(key)) continue
+  if (isDomEventClass(key)) continue
   try {
     Object.defineProperty(globalThis, key, desc)
   } catch {

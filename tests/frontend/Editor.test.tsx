@@ -36,6 +36,18 @@ test('Cmd/Ctrl+Enter triggers onRun', () => {
   expect(calls.run).toBe(1)
 })
 
+test('Ctrl+Enter also triggers onRun', () => {
+  const calls = setup()
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', ctrlKey: true })
+  expect(calls.run).toBe(1)
+})
+
+test('Cmd/Ctrl+Enter does not trigger onRun while loading', () => {
+  const calls = setup({ loading: true })
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', metaKey: true })
+  expect(calls.run).toBe(0)
+})
+
 test('plain Enter does not trigger onRun', () => {
   const calls = setup()
   fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' })
