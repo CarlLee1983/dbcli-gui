@@ -5,7 +5,7 @@
     "": {
       "name": "dbcli-gui",
       "dependencies": {
-        "@carllee1983/dbcli": "1.28.0",
+        "@carllee1983/dbcli": "^1.29.0",
         "zod": "^3.25.76",
       },
       "devDependencies": {
@@ -17,7 +17,7 @@
     },
   },
   "packages": {
-    "@carllee1983/dbcli": ["@carllee1983/dbcli@1.28.0", "", { "dependencies": { "cli-table3": "^0.6.5", "commander": "13.0.0", "lru-cache": "^11.4.0", "lucide-react": "^1.16.0", "mongodb": "^7.2.0", "mysql2": "^3.22.3", "node-sql-parser": "5", "open": "^11.0.0", "pg": "^8.21.0", "picocolors": "^1.1.1", "react": "^19.2.6", "react-dom": "^19.2.6", "recharts": "^3.8.1", "zod": "^3.25.76" }, "bin": { "dbcli": "dist/cli.mjs" } }, "sha512-qTGjZZY5Iy9Fc3F9nAPskqFkhVsXzBnBhiPUrE+4yqw86gnrqk93OKs8RpzWrhEcHrlYQHk58b8KQk8mPU2zKg=="],
+    "@carllee1983/dbcli": ["@carllee1983/dbcli@1.29.0", "", { "dependencies": { "cli-table3": "^0.6.5", "commander": "13.0.0", "lru-cache": "^11.4.0", "lucide-react": "^1.16.0", "mongodb": "^7.2.0", "mysql2": "^3.22.3", "node-sql-parser": "5", "open": "^11.0.0", "pg": "^8.21.0", "picocolors": "^1.1.1", "react": "^19.2.6", "react-dom": "^19.2.6", "recharts": "^3.8.1", "zod": "^3.25.76" }, "bin": { "dbcli": "dist/cli.mjs" } }, "sha512-0FHype05TIYmrP2wwpnHt8g7o/+iAASA1s4dnUwZSYkhXZr+L24FXWFp8XE7bQyVbAmpsrxcM0nsiuOSAH/rtg=="],
 
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
 
