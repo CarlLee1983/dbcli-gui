@@ -7,6 +7,7 @@ import { json } from './http'
 import { makeConnectionHandlers, makeListHandler, type ConnectionLister } from './routes/connections'
 import { makeQueryHandler } from './routes/query'
 import { makeSchemaHandlers } from './routes/schema'
+import { makeExportHandler } from './routes/export'
 
 export interface ServerDeps {
   pool: ConnectionPool
@@ -33,6 +34,7 @@ export function createServer(deps: ServerDeps): Server<unknown> {
       '/query': { POST: guard(deps.token, makeQueryHandler(deps.pool)) },
       '/schema/tree': { POST: guard(deps.token, schema.tree) },
       '/schema/table': { POST: guard(deps.token, schema.table) },
+      '/export': { POST: guard(deps.token, makeExportHandler(deps.pool)) },
     },
     fetch: () => json({ error: { code: 'NOT_FOUND', message: 'No such route' } }, 404),
   })
