@@ -36,3 +36,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # build outputs
 dist/
 src-tauri/target/
+
+# dbcli runtime artifacts (audit logs, session ids) written during tests
+.dbcli/

@@ -5,6 +5,7 @@ import type { ConnectionPool } from './connection-pool'
 import { checkBearer } from './auth'
 import { json } from './http'
 import { makeConnectionHandlers } from './routes/connections'
+import { makeQueryHandler } from './routes/query'
 
 export interface ServerDeps {
   pool: ConnectionPool
@@ -25,6 +26,7 @@ export function createServer(deps: ServerDeps): Server<unknown> {
       '/health': () => json({ ok: true, version: pkg.version }),
       '/connections/open': { POST: guard(deps.token, conn.open) },
       '/connections/close': { POST: guard(deps.token, conn.close) },
+      '/query': { POST: guard(deps.token, makeQueryHandler(deps.pool)) },
     },
     fetch: () => json({ error: { code: 'NOT_FOUND', message: 'No such route' } }, 404),
   })
