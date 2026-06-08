@@ -1,7 +1,7 @@
 import { QueryExecutor, BlacklistManager, BlacklistValidator } from '@carllee1983/dbcli/core'
 import type { ConnectionPool } from '../connection-pool'
 import { QueryBody } from '../../shared/schemas'
-import { toErrorBody, CLIENT_ERROR_CODES } from '../../shared/errors'
+import { toErrorBody, statusForCode } from '../../shared/errors'
 import { json } from '../http'
 
 const DEFAULT_LIMIT = 1000
@@ -30,8 +30,7 @@ export function makeQueryHandler(pool: ConnectionPool) {
       })
     } catch (err) {
       const body = toErrorBody(err)
-      const status = CLIENT_ERROR_CODES.has(body.error.code) ? 403 : 500
-      return json(body, status)
+      return json(body, statusForCode(body.error.code))
     }
   }
 }
