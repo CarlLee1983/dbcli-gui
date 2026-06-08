@@ -21,6 +21,18 @@ fn parse_ready_line(line: &str) -> Result<ReadyLine, String> {
 /// Holds the spawned sidecar child so we can kill it on exit.
 struct SidecarState(Mutex<Option<Child>>);
 
+/// Kills the wrapped sidecar if dropped before being disarmed — prevents an orphan
+/// `bun` process if startup fails between spawn and handing the child to managed state.
+struct KillOnDrop(Option<Child>);
+
+impl Drop for KillOnDrop {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.0.take() {
+            let _ = child.kill();
+        }
+    }
+}
+
 /// The dbcli-gui repo root = parent of the `src-tauri` crate dir. Dev-only resolution.
 fn repo_root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -33,13 +45,16 @@ fn main() {
     tauri::Builder::default()
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
-            // 1. spawn the sidecar from the repo root so it finds ./sidecar and ./.dbcli
-            let mut child = Command::new("bun")
-                .args(["run", "sidecar/index.ts"])
-                .current_dir(repo_root())
-                .stdout(Stdio::piped())
-                .spawn()
-                .map_err(|e| format!("failed to spawn sidecar: {e}"))?;
+            // 1. spawn the sidecar; KillOnDrop ensures no orphan if startup fails below
+            let mut sidecar = KillOnDrop(Some(
+                Command::new("bun")
+                    .args(["run", "sidecar/index.ts"])
+                    .current_dir(repo_root())
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .map_err(|e| format!("failed to spawn sidecar: {e}"))?,
+            ));
+            let child = sidecar.0.as_mut().expect("child present until disarmed");
 
             // 2. read the first stdout line: {"ready":true,"port":N,"token":"..."}
             let stdout = child
@@ -57,6 +72,9 @@ fn main() {
                 return Err("sidecar exited before printing a ready line".into());
             }
             let ready = parse_ready_line(line.trim())?;
+
+            // startup succeeded — disarm the guard and take ownership of the child
+            let child = sidecar.0.take().expect("child present until disarmed");
 
             // keep draining stdout so a full pipe never blocks the sidecar
             thread::spawn(move || {
