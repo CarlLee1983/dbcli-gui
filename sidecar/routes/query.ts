@@ -23,7 +23,12 @@ export function makeQueryHandler(pool: ConnectionPool) {
         autoLimit: true,
         limitValue: parsed.data.limit ?? DEFAULT_LIMIT,
       })
-      return json({ rows: result.rows, rowCount: result.rowCount })
+      return json({
+        rows: result.rows,
+        fields: result.columnNames,
+        rowCount: result.rowCount,
+        ms: result.executionTimeMs ?? null,
+      })
     } catch (err) {
       const body = toErrorBody(err)
       const status = CLIENT_ERROR_CODES.has(body.error.code) ? 403 : 500
