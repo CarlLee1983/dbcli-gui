@@ -6,6 +6,7 @@ import { checkBearer } from './auth'
 import { json } from './http'
 import { makeConnectionHandlers, makeListHandler, type ConnectionLister } from './routes/connections'
 import { makeQueryHandler } from './routes/query'
+import { makeSchemaHandlers } from './routes/schema'
 
 export interface ServerDeps {
   pool: ConnectionPool
@@ -21,6 +22,7 @@ const guard = (token: string, h: Handler): Handler => (req) =>
 /** Build (and start) the sidecar HTTP server. */
 export function createServer(deps: ServerDeps): Server<unknown> {
   const conn = makeConnectionHandlers(deps.pool)
+  const schema = makeSchemaHandlers(deps.pool)
   return Bun.serve({
     port: deps.port,
     routes: {
@@ -29,6 +31,8 @@ export function createServer(deps: ServerDeps): Server<unknown> {
       '/connections/close': { POST: guard(deps.token, conn.close) },
       '/connections/list': { POST: guard(deps.token, makeListHandler(deps.listConnections)) },
       '/query': { POST: guard(deps.token, makeQueryHandler(deps.pool)) },
+      '/schema/tree': { POST: guard(deps.token, schema.tree) },
+      '/schema/table': { POST: guard(deps.token, schema.table) },
     },
     fetch: () => json({ error: { code: 'NOT_FOUND', message: 'No such route' } }, 404),
   })
