@@ -11,9 +11,10 @@ export function App() {
   if (!s.online) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-600">
-        <p className="text-lg">引擎未連線</p>
+        <p id="offline-msg" className="text-lg">引擎未連線</p>
         <button
           type="button"
+          aria-describedby="offline-msg"
           onClick={() => location.reload()}
           className="rounded bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-700"
         >

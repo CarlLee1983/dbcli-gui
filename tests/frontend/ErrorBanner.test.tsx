@@ -1,18 +1,21 @@
-import { test, expect, afterEach } from 'bun:test'
+import { test, expect, afterEach, spyOn } from 'bun:test'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-
-afterEach(cleanup)
 import { ErrorBanner } from '../../src/components/ErrorBanner'
 import { ApiError } from '../../src/api/client'
+
+afterEach(cleanup)
 
 test('maps BLACKLISTED to a friendly message', () => {
   render(<ErrorBanner error={new ApiError('BLACKLISTED', 'raw', 403)} onDismiss={() => {}} />)
   expect(screen.getByText('此表受保護，無法存取')).toBeDefined()
 })
 
-test('falls back to a generic message for unknown codes', () => {
+test('falls back to a generic message for unknown codes and logs it', () => {
+  const spy = spyOn(console, 'error').mockImplementation(() => {})
   render(<ErrorBanner error={new ApiError('WEIRD', 'raw', 500)} onDismiss={() => {}} />)
   expect(screen.getByText('發生未預期錯誤')).toBeDefined()
+  expect(spy).toHaveBeenCalledWith('[dbcli] unexpected error:', 'WEIRD', 'raw')
+  spy.mockRestore()
 })
 
 test('renders nothing when error is null', () => {
