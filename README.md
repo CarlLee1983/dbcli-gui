@@ -54,3 +54,18 @@ The frontend reads the sidecar port + bearer token from the URL query string
 `{ ready, port, token }` line, and injects them into the URL — the same way the
 Phase C Tauri shell will. A working `.dbcli` connection config is needed to list
 connections and run queries.
+
+## 桌面開發(Tauri 殼)
+
+前置:已安裝 Rust 工具鏈(`cargo`)。
+
+```bash
+bun install
+bun run tauri dev      # 編譯 Rust 殼、build 前端、開原生視窗
+```
+
+Tauri 殼會自動 spawn `bun run sidecar/index.ts`,讀其 ready-line 取得隨機 port 與
+token,並在開窗前以 `window.__DBCLI__` 注入給前端;關閉視窗會一併收掉 sidecar。
+
+範圍說明:本階段僅供本機開發(`tauri dev`)。可散佈打包(`.app`/`.dmg`、簽章、notarize)
+與 health 監控/重啟 UI 為後續工作。
