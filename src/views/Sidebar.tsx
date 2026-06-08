@@ -57,7 +57,7 @@ export function Sidebar(props: SidebarProps) {
                     type="button"
                     aria-label={`查詢 ${t.name}`}
                     onClick={() => props.onInsertSelect(t.name)}
-                    className="p-1 opacity-0 hover:text-gray-800 group-hover:opacity-100"
+                    className="p-1 opacity-0 hover:text-gray-800 focus:opacity-100 focus:ring-1 focus:ring-blue-400 group-hover:opacity-100"
                   >
                     <Play className="h-3 w-3" />
                   </button>
@@ -65,8 +65,9 @@ export function Sidebar(props: SidebarProps) {
                 {columns ? (
                   <ul className="ml-5 border-l border-gray-200 pl-2 text-xs text-gray-600">
                     {columns.map((col) => (
+                      // SQL columns within a table are unique by name
                       <li key={col.name} className="flex items-center gap-1 py-0.5">
-                        {col.primaryKey ? <KeyRound className="h-3 w-3 text-amber-500" /> : null}
+                        {col.primaryKey ? <KeyRound className="h-3 w-3 text-amber-500" aria-label="主鍵" /> : null}
                         <span>{col.name}</span>
                         <span className="text-gray-400">{col.type}</span>
                         {col.primaryKey ? <span className="text-amber-600">PK</span> : null}

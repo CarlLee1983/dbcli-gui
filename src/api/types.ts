@@ -13,7 +13,7 @@ export interface QueryResultDto {
 
 export interface TreeTable {
   name: string
-  type: string
+  type: 'table' | 'view'
   columnCount?: number
   rowCount?: number | null
 }

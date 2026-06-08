@@ -59,6 +59,11 @@ test('expanded columns are shown with a PK marker', () => {
   expect(screen.getByText(/PK/)).toBeDefined()
 })
 
+test('renders the 預設 badge for the default connection', () => {
+  setup()
+  expect(screen.getByText('預設')).toBeDefined()
+})
+
 test('the insert-select button calls onInsertSelect', () => {
   const calls = setup()
   fireEvent.click(screen.getByRole('button', { name: /查詢 users/ }))
