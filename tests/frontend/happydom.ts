@@ -1,17 +1,26 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
 
-// happy-dom's registrator overrides the global web primitives (Response, Request,
-// Headers, fetch). Bun.serve-based sidecar tests in the same process need Bun's
-// NATIVE versions, and frontend tests only need the DOM (document/window), not
-// happy-dom's fetch stack. So register happy-dom for the DOM, then restore the
-// native primitives that were in place beforehand.
-const native = {
-  Response: globalThis.Response,
-  Request: globalThis.Request,
-  Headers: globalThis.Headers,
-  fetch: globalThis.fetch,
+// happy-dom's registrator shadows MANY native global web primitives (Response,
+// Request, Headers, fetch, URL, crypto, Event, ...). Bun.serve-based sidecar/dev
+// tests run in the same process and need Bun's NATIVE implementations, while
+// frontend tests only need the DOM-specific globals happy-dom ADDS (document,
+// window, location, navigator, ...).
+//
+// Strategy: snapshot every global Bun already had, register happy-dom, then
+// restore those native descriptors. Globals that did not exist before
+// registration (the actual DOM) are left as happy-dom installed them.
+const nativeDescriptors = new Map<string, PropertyDescriptor>()
+for (const key of Object.getOwnPropertyNames(globalThis)) {
+  const desc = Object.getOwnPropertyDescriptor(globalThis, key)
+  if (desc) nativeDescriptors.set(key, desc)
 }
 
 GlobalRegistrator.register({ url: 'http://localhost:3000/?port=9999&token=test-token' })
 
-Object.assign(globalThis, native)
+for (const [key, desc] of nativeDescriptors) {
+  try {
+    Object.defineProperty(globalThis, key, desc)
+  } catch {
+    // Some globals are non-configurable; leaving happy-dom's value is harmless.
+  }
+}
