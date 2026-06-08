@@ -4,13 +4,14 @@ import pkg from '../package.json'
 import type { ConnectionPool } from './connection-pool'
 import { checkBearer } from './auth'
 import { json } from './http'
-import { makeConnectionHandlers } from './routes/connections'
+import { makeConnectionHandlers, makeListHandler, type ConnectionLister } from './routes/connections'
 import { makeQueryHandler } from './routes/query'
 
 export interface ServerDeps {
   pool: ConnectionPool
   token: string
   port: number
+  listConnections?: ConnectionLister
 }
 
 type Handler = (req: Request) => Response | Promise<Response>
@@ -26,6 +27,7 @@ export function createServer(deps: ServerDeps): Server<unknown> {
       '/health': () => json({ ok: true, version: pkg.version }),
       '/connections/open': { POST: guard(deps.token, conn.open) },
       '/connections/close': { POST: guard(deps.token, conn.close) },
+      '/connections/list': { POST: guard(deps.token, makeListHandler(deps.listConnections)) },
       '/query': { POST: guard(deps.token, makeQueryHandler(deps.pool)) },
     },
     fetch: () => json({ error: { code: 'NOT_FOUND', message: 'No such route' } }, 404),
