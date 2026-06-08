@@ -93,8 +93,9 @@ struct ReadyLine { port: u16, token: String }
    - sidecar 依現有 `config.ts` 自帶隨機 port + token,殼不需自行產生。
 2. 以 `BufReader` 讀子程序 stdout **首行** → `parse_ready_line` → 取得 `port`、`token`。
 3. `WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))`
-   `.initialization_script(&format!("window.__DBCLI__ = {{ port: {port}, token: {token:?} }};"))`
-   設定 title / 預設尺寸後 `.build()`。token 為 hex(無特殊字元),`{:?}` 產生安全的帶引號字串。
+   `.initialization_script(...)` 注入 `window.__DBCLI__ = { port, token }`,設定 title / 預設尺寸後 `.build()`。
+   token 以 `serde_json::to_string(&token)` 編碼成合法 JSON 字串字面量(正確跳脫,不靠 `{:?}` 的 Rust Debug 巧合)。
+   另:讀 ready-line 時若 `read_line` 回 `Ok(0)`(sidecar 啟動即 EOF),回明確錯誤而非把空字串送進 parser。
 4. `Child` 存入 Tauri managed state `Mutex<Option<Child>>`,供收尾使用。
 
 ### 4.3 收尾
