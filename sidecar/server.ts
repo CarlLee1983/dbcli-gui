@@ -3,7 +3,7 @@ import type { Server } from 'bun'
 import pkg from '../package.json'
 import type { ConnectionPool } from './connection-pool'
 import { checkBearer } from './auth'
-import { json } from './http'
+import { json, type Handler } from './http'
 import { withCors, corsPreflight } from './cors'
 import { makeConnectionHandlers, makeListHandler, type ConnectionLister } from './routes/connections'
 import { makeQueryHandler } from './routes/query'
@@ -17,7 +17,6 @@ export interface ServerDeps {
   listConnections?: ConnectionLister
 }
 
-type Handler = (req: Request) => Response | Promise<Response>
 const guard = (token: string, h: Handler): Handler => (req) =>
   checkBearer(req, token) ? h(req) : json({ error: { code: 'UNAUTHORIZED', message: 'bad token' } }, 401)
 
