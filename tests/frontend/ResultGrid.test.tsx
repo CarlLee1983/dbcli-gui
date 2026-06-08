@@ -38,6 +38,20 @@ test('clicking a header sorts ascending by that column', () => {
   expect(cells[0]!.textContent).toBe('1')
 })
 
+test('clicking a header cycles asc → desc → unsorted', () => {
+  render(<ResultGrid result={small} />)
+  const header = screen.getByText('id')
+  const firstIdCell = () => screen.getAllByRole('cell').filter((c) => c.getAttribute('data-col') === 'id')[0]!
+  fireEvent.click(header)
+  expect(firstIdCell().textContent).toBe('1')
+  expect(header.textContent).toMatch(/▲/)
+  fireEvent.click(header)
+  expect(firstIdCell().textContent).toBe('2')
+  expect(header.textContent).toMatch(/▼/)
+  fireEvent.click(header)
+  expect(header.textContent).not.toMatch(/[▲▼]/)
+})
+
 test('shows an empty-state hint when result is null', () => {
   render(<ResultGrid result={null} />)
   expect(screen.getByText(/尚無結果/)).toBeDefined()

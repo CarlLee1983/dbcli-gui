@@ -39,3 +39,8 @@ test('sortRows compares strings via localeCompare', () => {
   const rows = [{ s: 'banana' }, { s: 'apple' }]
   expect(sortRows(rows, 's', 'asc').map((r) => r.s)).toEqual(['apple', 'banana'])
 })
+
+test('sortRows places null/undefined first on ascending', () => {
+  const rows = [{ v: 2 }, { v: null }, { v: 1 }] as Array<Record<string, unknown>>
+  expect(sortRows(rows, 'v', 'asc').map((r) => r.v)).toEqual([null, 1, 2])
+})

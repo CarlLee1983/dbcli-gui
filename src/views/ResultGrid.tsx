@@ -45,6 +45,8 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
       setSortField(field)
       setSortDir('asc')
     }
+    setScrollTop(0)
+    scrollRef.current?.scrollTo?.({ top: 0 })
   }
 
   return (
@@ -55,13 +57,16 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
         className="min-h-0 flex-1 overflow-auto"
         style={{ maxHeight: VIEWPORT_HEIGHT }}
       >
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-separate border-spacing-0 text-sm">
           <thead className="sticky top-0 bg-gray-100">
             <tr>
               {result.fields.map((f) => (
                 <th
                   key={f}
                   onClick={() => onHeaderClick(f)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') onHeaderClick(f) }}
+                  tabIndex={0}
+                  aria-sort={sortField === f ? (sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none') : 'none'}
                   className="cursor-pointer select-none border-b border-gray-300 px-3 py-1 text-left font-medium"
                 >
                   {f}
@@ -81,6 +86,9 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
                 ))}
               </tr>
             ))}
+            {sorted.length === 0 ? (
+              <tr><td colSpan={result.fields.length} className="py-6 text-center text-sm text-gray-400">查詢傳回 0 筆資料</td></tr>
+            ) : null}
             {range.bottomPad > 0 ? (
               <tr style={{ height: range.bottomPad }}><td colSpan={result.fields.length} /></tr>
             ) : null}
