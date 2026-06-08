@@ -1,5 +1,11 @@
+use std::io::{BufRead, BufReader};
+use std::process::{Child, Command, Stdio};
+use std::sync::Mutex;
+use std::thread;
+use std::time::Duration;
+
 use serde::Deserialize;
-use tauri::{WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct ReadyLine {
@@ -12,17 +18,94 @@ fn parse_ready_line(line: &str) -> Result<ReadyLine, String> {
         .map_err(|e| format!("invalid sidecar ready line ({e}): {line}"))
 }
 
+/// Holds the spawned sidecar child so we can kill it on exit.
+struct SidecarState(Mutex<Option<Child>>);
+
+/// The dbcli-gui repo root = parent of the `src-tauri` crate dir. Dev-only resolution.
+fn repo_root() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("src-tauri always has a parent directory")
+        .to_path_buf()
+}
+
 fn main() {
     tauri::Builder::default()
+        .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
+            // 1. spawn the sidecar from the repo root so it finds ./sidecar and ./.dbcli
+            let mut child = Command::new("bun")
+                .args(["run", "sidecar/index.ts"])
+                .current_dir(repo_root())
+                .stdout(Stdio::piped())
+                .spawn()
+                .map_err(|e| format!("failed to spawn sidecar: {e}"))?;
+
+            // 2. read the first stdout line: {"ready":true,"port":N,"token":"..."}
+            let stdout = child
+                .stdout
+                .take()
+                .ok_or_else(|| "sidecar stdout was not piped".to_string())?;
+            let mut reader = BufReader::new(stdout);
+            let mut line = String::new();
+            reader
+                .read_line(&mut line)
+                .map_err(|e| format!("failed to read sidecar ready line: {e}"))?;
+            let ready = parse_ready_line(line.trim())?;
+
+            // keep draining stdout so a full pipe never blocks the sidecar
+            thread::spawn(move || {
+                let mut sink = String::new();
+                while reader.read_line(&mut sink).map(|n| n > 0).unwrap_or(false) {
+                    sink.clear();
+                }
+            });
+
+            // 3. store the child for kill-on-exit
+            app.state::<SidecarState>().0.lock().unwrap().replace(child);
+
+            // 4. if the sidecar dies on its own, take the app down too
+            let handle = app.handle().clone();
+            thread::spawn(move || loop {
+                thread::sleep(Duration::from_millis(500));
+                let state = handle.state::<SidecarState>();
+                let mut guard = state.0.lock().unwrap();
+                match guard.as_mut() {
+                    Some(c) => match c.try_wait() {
+                        Ok(Some(_)) | Err(_) => {
+                            drop(guard);
+                            handle.exit(0);
+                            break;
+                        }
+                        Ok(None) => {}
+                    },
+                    None => break,
+                }
+            });
+
+            // 5. open the window, injecting port/token before any page script runs
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("dbcli-gui")
                 .inner_size(1200.0, 800.0)
+                .initialization_script(&format!(
+                    "window.__DBCLI__ = {{ port: {}, token: {:?} }};",
+                    ready.port, ready.token
+                ))
                 .build()?;
+
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("failed to run tauri app");
+        .build(tauri::generate_context!())
+        .expect("failed to build tauri app")
+        .run(|handle, event| {
+            if let RunEvent::ExitRequested { .. } = event {
+                if let Some(mut child) =
+                    handle.state::<SidecarState>().0.lock().unwrap().take()
+                {
+                    let _ = child.kill();
+                }
+            }
+        });
 }
 
 #[cfg(test)]
