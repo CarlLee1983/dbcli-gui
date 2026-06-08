@@ -35,6 +35,19 @@ test('query() POSTs to the right URL with bearer token and parses the body', asy
   expect(JSON.parse(init.body as string)).toEqual({ connectionId: 'conn', sql: 'SELECT 1', limit: 100 })
 })
 
+test('query() omits the limit key when no limit is passed', async () => {
+  const calls = stubFetch(() => jsonRes({ rows: [], fields: [], rowCount: 0, ms: 0 }))
+  const client = makeClient('http://127.0.0.1:1234', 'tok')
+  await client.query('conn', 'SELECT 1')
+  expect(JSON.parse(calls[0]!.init!.body as string)).toEqual({ connectionId: 'conn', sql: 'SELECT 1' })
+})
+
+test('non-2xx with a non-JSON body falls back to statusText + INTERNAL', async () => {
+  stubFetch(() => new Response('Service Unavailable', { status: 503, statusText: 'Service Unavailable' }))
+  const client = makeClient('http://127.0.0.1:1234', 'tok')
+  await expect(client.health()).rejects.toMatchObject({ code: 'INTERNAL', message: 'Service Unavailable', status: 503 })
+})
+
 test('health() returns the body', async () => {
   stubFetch(() => jsonRes({ ok: true, version: '0.1.0' }))
   const client = makeClient('http://127.0.0.1:1234', 'tok')

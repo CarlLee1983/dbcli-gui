@@ -28,8 +28,8 @@ interface ErrorEnvelope {
 
 function filenameFromDisposition(header: string | null, fallback: string): string {
   if (!header) return fallback
-  const match = /filename="?([^"]+)"?/.exec(header)
-  return match?.[1] ?? fallback
+  const match = /filename="([^"]+)"|filename=([^;,\s]+)/.exec(header)
+  return match?.[1] ?? match?.[2] ?? fallback
 }
 
 /** Build a download via a transient <a download> anchor. */
@@ -103,8 +103,7 @@ export function makeClient(base: string, token: string): DbClient {
         body: JSON.stringify({ connectionId: id, sql, format }),
       })
       if (!res.ok) {
-        await parseOrThrow(res)
-        return
+        await parseOrThrow(res) // always throws ApiError on a non-2xx response
       }
       const blob = await res.blob()
       const filename = filenameFromDisposition(res.headers.get('content-disposition'), `export.${format}`)
