@@ -24,10 +24,15 @@ test('on mount it checks health and loads connections', async () => {
   await waitFor(() => expect(result.current.connections.length).toBe(1))
 })
 
-test('health failure marks offline', async () => {
-  const client = fakeClient({ health: async () => { throw new Error('down') } })
+test('health failure marks offline and skips loading connections', async () => {
+  let listed = 0
+  const client = fakeClient({
+    health: async () => { throw new Error('down') },
+    listConnections: async () => { listed++; return { connections: [] } },
+  })
   const { result } = renderHook(() => useSidecar(client))
   await waitFor(() => expect(result.current.online).toBe(false))
+  expect(listed).toBe(0)
 })
 
 test('selectConnection opens it and loads the schema tree', async () => {
@@ -41,7 +46,7 @@ test('selectConnection opens it and loads the schema tree', async () => {
 test('insertSelect sets a SELECT statement into sql', async () => {
   const { result } = renderHook(() => useSidecar(fakeClient()))
   await waitFor(() => expect(result.current.online).toBe(true))
-  act(() => result.current.insertSelect('users'))
+  await act(async () => { result.current.insertSelect('users') })
   expect(result.current.sql).toBe('SELECT * FROM users LIMIT 100')
 })
 
@@ -49,7 +54,7 @@ test('runQuery stores the result', async () => {
   const { result } = renderHook(() => useSidecar(fakeClient()))
   await waitFor(() => expect(result.current.online).toBe(true))
   await act(async () => { await result.current.selectConnection('a') })
-  act(() => result.current.setSql('SELECT 1'))
+  await act(async () => { result.current.setSql('SELECT 1') })
   await act(async () => { await result.current.runQuery() })
   expect(result.current.result?.rowCount).toBe(1)
 })
@@ -69,7 +74,7 @@ test('runQuery retries once after NOT_OPEN by reopening the connection', async (
   await waitFor(() => expect(result.current.online).toBe(true))
   await act(async () => { await result.current.selectConnection('a') })
   const openBefore = openCalls
-  act(() => result.current.setSql('SELECT 1'))
+  await act(async () => { result.current.setSql('SELECT 1') })
   await act(async () => { await result.current.runQuery() })
   expect(queryCalls).toBe(2)
   expect(openCalls).toBe(openBefore + 1)
@@ -83,7 +88,38 @@ test('runQuery surfaces a non-retryable ApiError', async () => {
   const { result } = renderHook(() => useSidecar(client))
   await waitFor(() => expect(result.current.online).toBe(true))
   await act(async () => { await result.current.selectConnection('a') })
-  act(() => result.current.setSql('DELETE FROM t'))
+  await act(async () => { result.current.setSql('DELETE FROM t') })
   await act(async () => { await result.current.runQuery() })
   expect(result.current.error?.code).toBe('PERMISSION')
+})
+
+test('loadTableColumns populates expandedColumns for the table', async () => {
+  const { result } = renderHook(() => useSidecar(fakeClient()))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  await act(async () => { await result.current.selectConnection('a') })
+  await act(async () => { await result.current.loadTableColumns('t') })
+  expect(result.current.expandedColumns['t']?.[0]?.name).toBe('id')
+})
+
+test('exportResult calls exportRows with the active connection, sql, and format', async () => {
+  const calls: Array<[string, string, string]> = []
+  const client = fakeClient({ exportRows: async (id, sql, fmt) => { calls.push([id, sql, fmt]) } })
+  const { result } = renderHook(() => useSidecar(client))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  await act(async () => { await result.current.selectConnection('a') })
+  await act(async () => { result.current.setSql('SELECT 1') })
+  await act(async () => { await result.current.exportResult('csv') })
+  expect(calls).toEqual([['a', 'SELECT 1', 'csv']])
+})
+
+test('dismissError clears the error', async () => {
+  const client = fakeClient({ query: async () => { throw new ApiError('PERMISSION', 'ro', 403) } })
+  const { result } = renderHook(() => useSidecar(client))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  await act(async () => { await result.current.selectConnection('a') })
+  await act(async () => { result.current.setSql('DELETE FROM t') })
+  await act(async () => { await result.current.runQuery() })
+  expect(result.current.error?.code).toBe('PERMISSION')
+  act(() => result.current.dismissError())
+  expect(result.current.error).toBeNull()
 })

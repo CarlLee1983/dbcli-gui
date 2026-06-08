@@ -25,8 +25,9 @@ export interface SidecarApi extends SidecarState {
   dismissError(): void
 }
 
+const INTERNAL_STATUS = 0 // no HTTP response (client-side / wrapped error)
 const toApiError = (err: unknown): ApiError =>
-  err instanceof ApiError ? err : new ApiError('INTERNAL', err instanceof Error ? err.message : 'Unknown error', 0)
+  err instanceof ApiError ? err : new ApiError('INTERNAL', err instanceof Error ? err.message : 'Unknown error', INTERNAL_STATUS)
 
 export function useSidecar(client: DbClient = defaultClient): SidecarApi {
   // Stabilise the client reference: the mount effect and callbacks always read
@@ -46,8 +47,12 @@ export function useSidecar(client: DbClient = defaultClient): SidecarApi {
   const [loading, setLoading] = useState(false)
 
   const refreshConnections = useCallback(async () => {
-    const { connections } = await clientRef.current.listConnections()
-    setConnections(connections)
+    try {
+      const { connections } = await clientRef.current.listConnections()
+      setConnections(connections)
+    } catch (err) {
+      setError(toApiError(err))
+    }
   }, [])
 
   useEffect(() => {
@@ -63,15 +68,15 @@ export function useSidecar(client: DbClient = defaultClient): SidecarApi {
       }
     })()
     return () => { cancelled = true }
-  }, [refreshConnections])
+  }, [refreshConnections]) // stable: refreshConnections is memoised with [] deps, so this runs once
 
   const selectConnection = useCallback(async (id: string) => {
     setError(null)
     try {
       await clientRef.current.openConnection(id)
+      const { tables } = await clientRef.current.schemaTree(id)
       setActiveConnectionId(id)
       setExpandedColumns({})
-      const { tables } = await clientRef.current.schemaTree(id)
       setTree(tables)
     } catch (err) {
       setError(toApiError(err))
@@ -133,7 +138,10 @@ export function useSidecar(client: DbClient = defaultClient): SidecarApi {
   const dismissError = useCallback(() => setError(null), [])
 
   return {
+    // state
     online, connections, activeConnectionId, tree, expandedColumns, sql, result, error, loading,
-    refreshConnections, selectConnection, loadTableColumns, setSql, runQuery, insertSelect, exportResult, dismissError,
+    // actions
+    refreshConnections, selectConnection, loadTableColumns, setSql,
+    runQuery, insertSelect, exportResult, dismissError,
   }
 }
