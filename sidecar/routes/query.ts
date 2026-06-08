@@ -1,11 +1,10 @@
 import { QueryExecutor, BlacklistManager, BlacklistValidator } from '@carllee1983/dbcli/core'
 import type { ConnectionPool } from '../connection-pool'
 import { QueryBody } from '../../shared/schemas'
-import { toErrorBody } from '../../shared/errors'
+import { toErrorBody, CLIENT_ERROR_CODES } from '../../shared/errors'
 import { json } from '../http'
 
 const DEFAULT_LIMIT = 1000
-const CLIENT_ERROR_CODES = new Set(['PERMISSION', 'BLACKLISTED'])
 
 export function makeQueryHandler(pool: ConnectionPool) {
   return async function query(req: Request): Promise<Response> {

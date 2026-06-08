@@ -1,13 +1,12 @@
 import { QueryExecutor, BlacklistManager, BlacklistValidator } from '@carllee1983/dbcli/core'
 import type { ConnectionPool } from '../connection-pool'
 import { ExportBody } from '../../shared/schemas'
-import { toErrorBody } from '../../shared/errors'
+import { toErrorBody, CLIENT_ERROR_CODES } from '../../shared/errors'
 import { json } from '../http'
 
 const DEFAULT_LIMIT = 10000 // exports allow more rows than the interactive grid
-const CLIENT_ERROR_CODES = new Set(['PERMISSION', 'BLACKLISTED'])
 
-/** Serialize rows to RFC-4180 CSV using an explicit column order. */
+/** Serialize rows to CSV with RFC-4180 field quoting, LF-delimited. */
 export function toCsv(columnNames: string[], rows: Array<Record<string, unknown>>): string {
   if (columnNames.length === 0) return ''
   const escape = (value: unknown): string => {

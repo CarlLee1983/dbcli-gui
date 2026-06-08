@@ -4,6 +4,9 @@ export interface ErrorBody {
   error: { code: string; message: string }
 }
 
+/** Error codes that map to a 4xx client error (HTTP 403) rather than a 500. */
+export const CLIENT_ERROR_CODES = new Set(['PERMISSION', 'BLACKLISTED'])
+
 /**
  * Map an error to a user-safe { code, message }. dbcli's typed errors get
  * semantic codes; everything else collapses to INTERNAL (details stay in logs).

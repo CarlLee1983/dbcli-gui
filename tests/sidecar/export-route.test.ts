@@ -76,3 +76,13 @@ test('toCsv returns empty string when there are no columns', () => {
   expect(toCsv([], [])).toBe('')
   expect(toCsv([], [{ id: 1 }])).toBe('')
 })
+
+test('export without auth returns 401', async () => {
+  const s = start([])
+  const res = await fetch(`http://localhost:${s.port}/export`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ connectionId: 'main', sql: 'SELECT 1', format: 'csv' }),
+  })
+  expect(res.status).toBe(401)
+})
