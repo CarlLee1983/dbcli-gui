@@ -56,7 +56,8 @@ export function defaultConnectionLister(dbcliPath: string): ConnectionLister {
 export function makeListHandler(lister?: ConnectionLister) {
   return async function list(_req: Request): Promise<Response> {
     if (!lister) {
-      return json({ error: { code: 'NOT_CONFIGURED', message: 'connection listing not configured' } }, statusForCode('NOT_CONFIGURED'))
+      const body = { error: { code: 'NOT_CONFIGURED', message: 'connection listing not configured' } }
+      return json(body, statusForCode(body.error.code))
     }
     try {
       return json({ connections: await lister() })

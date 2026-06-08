@@ -41,7 +41,8 @@ export function makeSchemaHandlers(pool: ConnectionPool) {
       const manager = new BlacklistManager(entry.config)
       // Reject before touching the DB so a protected table's schema never leaks.
       if (manager.isTableBlacklisted(parsed.data.table)) {
-        return json(toErrorBody(new BlacklistError(`${parsed.data.table} is protected`, parsed.data.table, 'schema')), 403)
+        const body = toErrorBody(new BlacklistError(`${parsed.data.table} is protected`, parsed.data.table, 'schema'))
+        return json(body, statusForCode(body.error.code))
       }
 
       try {
