@@ -51,3 +51,14 @@ test('POST /connections/list returns 501 when no lister is configured', async ()
   expect(res.status).toBe(501)
   expect((await res.json() as { error: { code: string } }).error.code).toBe('NOT_CONFIGURED')
 })
+
+test('POST /connections/list maps a ConfigError (missing .dbcli) to 501 NOT_CONFIGURED', async () => {
+  const s = start(async () => {
+    const e = new Error('找不到 V2 設定檔：/proj/.dbcli/config.json')
+    e.name = 'ConfigError'
+    throw e
+  })
+  const res = await post(s, '/connections/list', {})
+  expect(res.status).toBe(501)
+  expect((await res.json() as { error: { code: string } }).error.code).toBe('NOT_CONFIGURED')
+})

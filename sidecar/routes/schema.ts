@@ -1,7 +1,7 @@
 import { BlacklistManager, BlacklistError } from '@carllee1983/dbcli/core'
 import type { ConnectionPool } from '../connection-pool'
 import { SchemaTreeBody, SchemaTableBody } from '../../shared/schemas'
-import { toErrorBody } from '../../shared/errors'
+import { toErrorBody, statusForCode } from '../../shared/errors'
 import { json } from '../http'
 
 export function makeSchemaHandlers(pool: ConnectionPool) {
@@ -26,7 +26,8 @@ export function makeSchemaHandlers(pool: ConnectionPool) {
           }))
         return json({ tables: visible })
       } catch (err) {
-        return json(toErrorBody(err), 500)
+        const body = toErrorBody(err)
+        return json(body, statusForCode(body.error.code))
       }
     },
 
@@ -49,7 +50,8 @@ export function makeSchemaHandlers(pool: ConnectionPool) {
         const columns = schema.columns.filter((c) => !blacklisted.has(c.name))
         return json({ table: { ...schema, columns } })
       } catch (err) {
-        return json(toErrorBody(err), 500)
+        const body = toErrorBody(err)
+        return json(body, statusForCode(body.error.code))
       }
     },
   }

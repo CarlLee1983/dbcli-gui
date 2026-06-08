@@ -1,6 +1,6 @@
 import type { ConnectionPool } from '../connection-pool'
 import { OpenBody, CloseBody } from '../../shared/schemas'
-import { toErrorBody } from '../../shared/errors'
+import { toErrorBody, statusForCode } from '../../shared/errors'
 import { json } from '../http'
 import { readV2Config, listConnections } from '@carllee1983/dbcli/core'
 
@@ -13,7 +13,8 @@ export function makeConnectionHandlers(pool: ConnectionPool) {
         const entry = await pool.open(parsed.data.connectionId)
         return json({ ok: true, system: (entry.config.connection as { system: string }).system })
       } catch (err) {
-        return json(toErrorBody(err), 502)
+        const body = toErrorBody(err)
+        return json(body, statusForCode(body.error.code))
       }
     },
     async close(req: Request): Promise<Response> {
@@ -22,7 +23,8 @@ export function makeConnectionHandlers(pool: ConnectionPool) {
       try {
         await pool.close(parsed.data.connectionId)
       } catch (err) {
-        return json(toErrorBody(err), 502)
+        const body = toErrorBody(err)
+        return json(body, statusForCode(body.error.code))
       }
       return json({ ok: true })
     },
@@ -54,12 +56,13 @@ export function defaultConnectionLister(dbcliPath: string): ConnectionLister {
 export function makeListHandler(lister?: ConnectionLister) {
   return async function list(_req: Request): Promise<Response> {
     if (!lister) {
-      return json({ error: { code: 'NOT_CONFIGURED', message: 'connection listing not configured' } }, 501)
+      return json({ error: { code: 'NOT_CONFIGURED', message: 'connection listing not configured' } }, statusForCode('NOT_CONFIGURED'))
     }
     try {
       return json({ connections: await lister() })
     } catch (err) {
-      return json(toErrorBody(err), 500)
+      const body = toErrorBody(err)
+      return json(body, statusForCode(body.error.code))
     }
   }
 }

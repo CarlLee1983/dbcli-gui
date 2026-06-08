@@ -1,7 +1,7 @@
 import { test, expect, afterEach } from 'bun:test'
 import { createServer } from '../../sidecar/server'
 import { ConnectionPool } from '../../sidecar/connection-pool'
-import type { DbcliConfig, DatabaseAdapter } from '@carllee1983/dbcli/core'
+import { ConnectionError, type DbcliConfig, type DatabaseAdapter } from '@carllee1983/dbcli/core'
 
 const fakeConfig = { connection: { system: 'postgresql' }, permission: 'read-write' } as unknown as DbcliConfig
 function fakeAdapter() { return { connect: async () => {}, disconnect: async () => {}, execute: async () => ({ rows: [] }) } as unknown as DatabaseAdapter }
@@ -48,4 +48,28 @@ test('POST /connections/close without auth returns 401', async () => {
   const s = start()
   const res = await post(s, '/connections/close', { connectionId: 'main' }, 'Bearer wrong')
   expect(res.status).toBe(401)
+})
+
+test('POST /connections/open maps a ConfigError (unknown id / missing config) to 501 NOT_CONFIGURED', async () => {
+  const pool = new ConnectionPool({
+    loadConfig: async () => { const e = new Error("連線 'nope' 不存在"); e.name = 'ConfigError'; throw e },
+    openAdapter: () => fakeAdapter(),
+  })
+  server = createServer({ pool, token: 'test', port: 0 })
+  const res = await post(server, '/connections/open', { connectionId: 'nope' })
+  expect(res.status).toBe(501)
+  expect((await res.json() as { error: { code: string } }).error.code).toBe('NOT_CONFIGURED')
+})
+
+test('POST /connections/open maps a ConnectionError to 502 CONNECTION', async () => {
+  const downAdapter = {
+    connect: async () => { throw new ConnectionError('ECONNREFUSED', 'db is down', []) },
+    disconnect: async () => {},
+    execute: async () => ({ rows: [] }),
+  } as unknown as DatabaseAdapter
+  const pool = new ConnectionPool({ loadConfig: async () => fakeConfig, openAdapter: () => downAdapter })
+  server = createServer({ pool, token: 'test', port: 0 })
+  const res = await post(server, '/connections/open', { connectionId: 'main' })
+  expect(res.status).toBe(502)
+  expect((await res.json() as { error: { code: string } }).error.code).toBe('CONNECTION')
 })
