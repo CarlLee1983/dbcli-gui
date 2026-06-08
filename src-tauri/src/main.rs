@@ -48,9 +48,14 @@ fn main() {
                 .ok_or_else(|| "sidecar stdout was not piped".to_string())?;
             let mut reader = BufReader::new(stdout);
             let mut line = String::new();
-            reader
+            // Blocks until the sidecar prints its ready line. No timeout: a sidecar that
+            // spawns but never prints (dev-only failure mode) is acknowledged future scope.
+            let n = reader
                 .read_line(&mut line)
                 .map_err(|e| format!("failed to read sidecar ready line: {e}"))?;
+            if n == 0 {
+                return Err("sidecar exited before printing a ready line".into());
+            }
             let ready = parse_ready_line(line.trim())?;
 
             // keep draining stdout so a full pipe never blocks the sidecar
@@ -84,12 +89,15 @@ fn main() {
             });
 
             // 5. open the window, injecting port/token before any page script runs
+            // serde_json::to_string yields a properly JSON-escaped string literal (with quotes).
+            let token_json = serde_json::to_string(&ready.token)
+                .expect("serializing a String is infallible");
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("dbcli-gui")
                 .inner_size(1200.0, 800.0)
                 .initialization_script(&format!(
-                    "window.__DBCLI__ = {{ port: {}, token: {:?} }};",
-                    ready.port, ready.token
+                    "window.__DBCLI__ = {{ port: {}, token: {} }};",
+                    ready.port, token_json
                 ))
                 .build()?;
 
