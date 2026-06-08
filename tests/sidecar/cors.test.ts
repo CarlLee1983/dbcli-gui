@@ -40,3 +40,9 @@ test('401 from a guarded route still carries CORS header', async () => {
   expect(res.status).toBe(401)
   expect(res.headers.get('access-control-allow-origin')).toBe('*')
 })
+
+test('responses expose content-disposition for the export filename', async () => {
+  server = makeServer()
+  const res = await fetch(`http://localhost:${server.port}/health`)
+  expect(res.headers.get('access-control-expose-headers')).toContain('content-disposition')
+})

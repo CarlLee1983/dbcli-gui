@@ -7,6 +7,7 @@ export const CORS_HEADERS = Object.freeze({
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Expose-Headers': 'content-disposition',
 })
 
 /** Wrap a handler so every response (including errors) carries CORS headers. */
