@@ -29,8 +29,8 @@ write SQL → result grid → export. `query-only` permission. macOS Apple Silic
 
 ## Build order
 
-1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ← current
-2. React frontend (builds against the sidecar).
+1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ✓ done
+2. **React frontend** (builds against the sidecar). ← current
 3. Tauri shell (wires them together + packaging).
 
 ## Conventions
@@ -43,5 +43,14 @@ write SQL → result grid → export. `query-only` permission. macOS Apple Silic
 
 ```bash
 bun install
-bun test            # sidecar tests (once present)
+bun test            # full suite: sidecar + dev harness + frontend (happy-dom)
+bun run dev         # spawn the sidecar + serve the SPA with HMR; prints a
+                    # http://localhost:3000/?port=…&token=… URL to open
+bun run build       # production static build → ./dist (for the Phase C Tauri shell)
 ```
+
+The frontend reads the sidecar port + bearer token from the URL query string
+(`?port=&token=`). In dev, `dev/serve.ts` spawns the sidecar, reads its
+`{ ready, port, token }` line, and injects them into the URL — the same way the
+Phase C Tauri shell will. A working `.dbcli` connection config is needed to list
+connections and run queries.

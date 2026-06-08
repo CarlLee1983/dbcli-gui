@@ -5,16 +5,29 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "sidecar": "bun run sidecar/index.ts"
+    "sidecar": "bun run sidecar/index.ts",
+    "dev": "bun run dev/serve.ts",
+    "build": "bun run build.ts",
+    "test": "bun test"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.14"
+    "@happy-dom/global-registrator": "^20.10.2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/bun": "^1.3.14",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "bun-plugin-tailwind": "^0.1.2",
+    "tailwindcss": "4"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@carllee1983/dbcli": "^1.29.0",
+    "lucide-react": "^1.17.0",
+    "react": "19",
+    "react-dom": "19",
     "zod": "^3.25.76"
   }
 }
