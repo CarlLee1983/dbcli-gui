@@ -26,3 +26,11 @@ test('is disabled when there is no result', () => {
   setup({ hasResult: false })
   expect((screen.getByRole('combobox') as HTMLSelectElement).disabled).toBe(true)
 })
+
+test('selecting the same format twice fires onExport twice', () => {
+  const calls = setup()
+  const combo = screen.getByRole('combobox')
+  fireEvent.change(combo, { target: { value: 'csv' } })
+  fireEvent.change(combo, { target: { value: 'csv' } })
+  expect(calls).toEqual(['csv', 'csv'])
+})
