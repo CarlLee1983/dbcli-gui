@@ -39,7 +39,7 @@ bun run tauri dev
        開 WebviewWindow → WebviewUrl::App("index.html")
          + initialization_script: window.__DBCLI__ = { port, token }
        │  前端 readConnParams() 優先讀 window.__DBCLI__,退回 location.search
-       └─ fetch http://localhost:X (Authorization: Bearer token) → sidecar
+       └─ fetch http://127.0.0.1:X (Authorization: Bearer token) → sidecar
   視窗關閉 / sidecar 自己死 → kill 子程序 + app 退出
 ```
 
@@ -117,7 +117,7 @@ spawn + 讀 stdout 採 **`std::process::Command` + thread**(零外掛、免 capa
 
 ## 6. 整合風險
 
-1. **CSP(致命,須早驗)**:前端全程 `fetch http://localhost:<port>`。Tauri v2 預設 CSP 會擋。
+1. **CSP(致命,須早驗)**:前端全程 `fetch http://127.0.0.1:<port>`(`client.ts` 用 `127.0.0.1`)。Tauri v2 預設 CSP 會擋。
    `tauri.conf.json` 的 `app.security.csp` 須含:
    `connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:*`;
    Google Fonts 另需 `style-src` / `font-src` 放行 `https://fonts.googleapis.com` /
