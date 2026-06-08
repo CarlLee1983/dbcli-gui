@@ -6,6 +6,13 @@ import type { DbcliConfig, DatabaseAdapter } from '@carllee1983/dbcli/core'
 // Minimal config with no blacklist; permission in config is read-write but the route forces query-only.
 const fakeConfig = { connection: { system: 'postgresql' }, permission: 'read-write' } as unknown as DbcliConfig
 
+// Config with a blacklisted table to test blacklist enforcement end-to-end.
+const blacklistedConfig = {
+  connection: { system: 'postgresql' },
+  permission: 'read-write',
+  blacklist: { tables: ['secret_table'], columns: {} },
+} as unknown as DbcliConfig
+
 function fakeAdapter(rows: Array<Record<string, unknown>>): DatabaseAdapter {
   return {
     connect: async () => {},
@@ -20,6 +27,12 @@ afterEach(async () => { await server?.stop(true) })
 
 function start(rows: Array<Record<string, unknown>>) {
   const pool = new ConnectionPool({ loadConfig: async () => fakeConfig, openAdapter: () => fakeAdapter(rows) })
+  server = createServer({ pool, token: 'test', port: 0 })
+  return server
+}
+
+function startWith(config: DbcliConfig, rows: Array<Record<string, unknown>>) {
+  const pool = new ConnectionPool({ loadConfig: async () => config, openAdapter: () => fakeAdapter(rows) })
   server = createServer({ pool, token: 'test', port: 0 })
   return server
 }
@@ -56,4 +69,16 @@ test('invalid body returns 400', async () => {
   await post(s, '/connections/open', { connectionId: 'main' })
   const res = await post(s, '/query', { connectionId: 'main' })
   expect(res.status).toBe(400)
+})
+
+test('SELECT on a blacklisted table returns 403 BLACKLISTED', async () => {
+  // Proves that BlacklistValidator is enforced end-to-end through HTTP:
+  // QueryExecutor.execute calls extractTableName(sql) → checkTableBlacklist →
+  // throws BlacklistError → toErrorBody maps it to BLACKLISTED → route returns 403.
+  const s = startWith(blacklistedConfig, [])
+  await post(s, '/connections/open', { connectionId: 'main' })
+  const res = await post(s, '/query', { connectionId: 'main', sql: 'SELECT * FROM secret_table' })
+  expect(res.status).toBe(403)
+  const body = await res.json() as { error: { code: string } }
+  expect(body.error.code).toBe('BLACKLISTED')
 })
