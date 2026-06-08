@@ -15,7 +15,19 @@ export async function readReadyLine(stream: ReadableStream<Uint8Array>): Promise
       if (done) throw new Error('sidecar exited before ready line')
       buffer += decoder.decode(value, { stream: true })
       const nl = buffer.indexOf('\n')
-      if (nl >= 0) return JSON.parse(buffer.slice(0, nl)) as SidecarReady
+      if (nl >= 0) {
+        const raw = buffer.slice(0, nl)
+        let parsed: Record<string, unknown>
+        try {
+          parsed = JSON.parse(raw) as Record<string, unknown>
+        } catch {
+          throw new Error(`sidecar ready line is not valid JSON: ${raw}`)
+        }
+        if (typeof parsed.port !== 'number' || typeof parsed.token !== 'string') {
+          throw new Error(`sidecar ready line missing port/token: ${raw}`)
+        }
+        return parsed as unknown as SidecarReady
+      }
     }
   } finally {
     reader.releaseLock()

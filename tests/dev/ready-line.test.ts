@@ -28,3 +28,9 @@ test('throws if the stream ends before a newline', async () => {
   const stream = streamOf(['{"ready":true'])
   await expect(readReadyLine(stream)).rejects.toThrow(/before ready/)
 })
+
+test('uses the first newline when a chunk contains multiple lines', async () => {
+  const stream = streamOf(['{"ready":true,"port":8,"token":"t"}\nextra line\n'])
+  const ready = await readReadyLine(stream)
+  expect(ready.port).toBe(8)
+})

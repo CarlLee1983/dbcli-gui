@@ -18,11 +18,13 @@ const server = Bun.serve({
   routes: { '/': index },
 })
 
+// token is printed intentionally — the dev opens this URL directly in the browser.
 const url = `http://localhost:${server.port}/?port=${ready.port}&token=${ready.token}`
 console.log(`\n  dbcli-gui dev server:\n  ${url}\n`)
 
 const shutdown = () => {
   try {
+    // kill() is a no-op if the sidecar already exited; safe to call unconditionally.
     sidecar.kill()
   } finally {
     process.exit(0)
