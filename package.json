@@ -8,10 +8,12 @@
     "sidecar": "bun run sidecar/index.ts",
     "dev": "bun run dev/serve.ts",
     "build": "bun run build.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "tauri": "tauri"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.10.2",
+    "@tauri-apps/cli": "^2.11.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/bun": "^1.3.14",
