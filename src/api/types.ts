@@ -32,3 +32,26 @@ export interface TableSchemaDto {
   primaryKey?: string[]
   indexes?: Array<{ name: string; columns: string[]; unique: boolean }>
 }
+
+export type SqlSystem = 'mysql' | 'postgresql' | 'mariadb'
+
+export interface ConnectionFormInput {
+  name: string
+  system: SqlSystem
+  host: string
+  port: number
+  user: string
+  database: string
+  password?: string
+}
+
+export interface ConnectionDetail {
+  name: string
+  system: SqlSystem
+  host: string
+  port: number
+  user: string
+  database: string
+}
+
+export interface TestResult { ok: boolean; ms: number }

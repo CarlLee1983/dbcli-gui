@@ -90,6 +90,27 @@ test('non-2xx throws ApiError carrying code, message, status', async () => {
   }
 })
 
+test('createConnection posts to /connections/create', async () => {
+  const calls = stubFetch(({ init }) => jsonRes({ ok: true }))
+  const c = makeClient('http://x', 't')
+  await c.createConnection({ name: 'a', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd', password: 'p' })
+  expect(calls[0]!.url).toBe('http://x/connections/create')
+  expect(JSON.parse(calls[0]!.init!.body as string)).toMatchObject({ name: 'a', system: 'mysql' })
+})
+
+test('testConnection returns { ok, ms }', async () => {
+  stubFetch(() => jsonRes({ ok: true, ms: 12 }))
+  const c = makeClient('http://x', 't')
+  expect(await c.testConnection({ system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' })).toEqual({ ok: true, ms: 12 })
+})
+
+test('getConnection reads ?name=', async () => {
+  const calls = stubFetch(() => jsonRes({ name: 'a', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
+  const c = makeClient('http://x', 't')
+  await c.getConnection('a')
+  expect(calls[0]!.url).toBe('http://x/connections/get?name=a')
+})
+
 test('exportRows() triggers a download with the content-disposition filename', async () => {
   stubFetch(() =>
     new Response('a,b\n1,2', {

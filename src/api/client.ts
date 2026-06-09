@@ -3,6 +3,9 @@ import type {
   QueryResultDto,
   TreeTable,
   TableSchemaDto,
+  ConnectionFormInput,
+  ConnectionDetail,
+  TestResult,
 } from './types'
 import { saveFile } from './save-file'
 
@@ -54,6 +57,12 @@ export interface DbClient {
   schemaTree(id: string): Promise<{ tables: TreeTable[] }>
   schemaTable(id: string, table: string): Promise<TableSchemaDto>
   exportRows(id: string, sql: string, format: 'csv' | 'json'): Promise<void>
+  createConnection(input: ConnectionFormInput): Promise<{ ok: boolean }>
+  updateConnection(input: ConnectionFormInput): Promise<{ ok: boolean }>
+  deleteConnection(name: string): Promise<{ ok: boolean }>
+  setDefaultConnection(name: string): Promise<{ ok: boolean }>
+  testConnection(input: Omit<ConnectionFormInput, 'name'>): Promise<TestResult>
+  getConnection(name: string): Promise<ConnectionDetail>
 }
 
 export function makeClient(base: string, token: string): DbClient {
@@ -97,6 +106,12 @@ export function makeClient(base: string, token: string): DbClient {
       const body = (await post('/schema/table', { connectionId: id, table })) as { table: TableSchemaDto }
       return body.table
     },
+    createConnection: (input) => post('/connections/create', input) as Promise<{ ok: boolean }>,
+    updateConnection: (input) => post('/connections/update', input) as Promise<{ ok: boolean }>,
+    deleteConnection: (name) => post('/connections/delete', { name }) as Promise<{ ok: boolean }>,
+    setDefaultConnection: (name) => post('/connections/set-default', { name }) as Promise<{ ok: boolean }>,
+    testConnection: (input) => post('/connections/test', input) as Promise<TestResult>,
+    getConnection: (name) => get(`/connections/get?name=${encodeURIComponent(name)}`) as Promise<ConnectionDetail>,
     exportRows: async (id, sql, format) => {
       const res = await fetch(`${base}/export`, {
         method: 'POST',
