@@ -13,8 +13,18 @@ function fakeClient(over: Partial<DbClient> = {}): DbClient {
     schemaTree: async () => ({ tables: [{ name: 't', type: 'table' }] }),
     schemaTable: async () => ({ name: 't', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }] }),
     exportRows: async () => {},
+    createConnection: async () => ({ ok: true }),
+    updateConnection: async () => ({ ok: true }),
+    deleteConnection: async () => ({ ok: true }),
+    setDefaultConnection: async () => ({ ok: true }),
+    testConnection: async () => ({ ok: true, ms: 0 }),
+    getConnection: async () => ({ name: 'a', system: 'postgresql', host: 'h', port: 5432, user: 'u', database: 'd' }),
     ...over,
   }
+}
+
+function stubClient(over: Partial<DbClient>): DbClient {
+  return fakeClient(over)
 }
 
 test('on mount checks health and loads connections', async () => {
@@ -42,4 +52,27 @@ test('loadTableColumns populates expandedColumns', async () => {
 test('health failure marks offline', async () => {
   const { result } = renderHook(() => useConnections(fakeClient({ health: async () => { throw new Error('down') } })))
   await waitFor(() => expect(result.current.online).toBe(false))
+})
+
+test('createConnection calls client then refreshes the list', async () => {
+  const calls: string[] = []
+  let listResult = [{ name: 'primary', system: 'mysql', isDefault: true }]
+  const client = stubClient({
+    createConnection: async () => { calls.push('create'); listResult = [...listResult, { name: 'staging', system: 'mysql', isDefault: false }]; return { ok: true } },
+    listConnections: async () => ({ connections: listResult }),
+  })
+  const { result } = renderHook(() => useConnections(client))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  await act(async () => { await result.current.createConnection({ name: 'staging', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd', password: 'p' }) })
+  expect(calls).toEqual(['create'])
+  await waitFor(() => expect(result.current.connections.map((c) => c.name)).toContain('staging'))
+})
+
+test('testConnection returns the result without touching the list', async () => {
+  const client = stubClient({ testConnection: async () => ({ ok: true, ms: 9 }) })
+  const { result } = renderHook(() => useConnections(client))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  let r: { ok: boolean; ms: number } | undefined
+  await act(async () => { r = await result.current.testConnection({ system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }) })
+  expect(r).toEqual({ ok: true, ms: 9 })
 })

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { client as defaultClient, ApiError, type DbClient } from '../api/client'
-import type { ConnectionSummary, TreeTable, TableColumnDto } from '../api/types'
+import type { ConnectionSummary, TreeTable, TableColumnDto, ConnectionFormInput, ConnectionDetail, TestResult } from '../api/types'
 
 const INTERNAL_STATUS = 0 // no HTTP response (client-side / wrapped error)
 export const toApiError = (err: unknown): ApiError =>
@@ -19,6 +19,12 @@ export interface ConnectionsApi {
   refreshConnections(): Promise<void>
   setError(err: ApiError | null): void
   dismissError(): void
+  createConnection(input: ConnectionFormInput): Promise<void>
+  updateConnection(input: ConnectionFormInput): Promise<void>
+  deleteConnection(name: string): Promise<void>
+  setDefault(name: string): Promise<void>
+  testConnection(input: Omit<ConnectionFormInput, 'name'>): Promise<TestResult>
+  getConnection(name: string): Promise<ConnectionDetail>
 }
 
 export function useConnections(client: DbClient = defaultClient): ConnectionsApi {
@@ -85,6 +91,44 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
 
   const dismissError = useCallback(() => setError(null), [])
 
+  // Shared mutate helper: runs fn, refreshes the list on success, surfaces + rethrows on error.
+  const mutate = useCallback(async (fn: () => Promise<unknown>) => {
+    setError(null)
+    try {
+      await fn()
+      await refreshConnections()
+    } catch (err) {
+      const apiErr = toApiError(err)
+      setError(apiErr)
+      throw apiErr
+    }
+  }, [refreshConnections])
+
+  const createConnection = useCallback(
+    (input: ConnectionFormInput) => mutate(() => clientRef.current.createConnection(input)),
+    [mutate],
+  )
+  const updateConnection = useCallback(
+    (input: ConnectionFormInput) => mutate(() => clientRef.current.updateConnection(input)),
+    [mutate],
+  )
+  const deleteConnection = useCallback(
+    (name: string) => mutate(() => clientRef.current.deleteConnection(name)),
+    [mutate],
+  )
+  const setDefault = useCallback(
+    (name: string) => mutate(() => clientRef.current.setDefaultConnection(name)),
+    [mutate],
+  )
+  const testConnection = useCallback(
+    (input: Omit<ConnectionFormInput, 'name'>) => clientRef.current.testConnection(input),
+    [],
+  )
+  const getConnection = useCallback(
+    (name: string) => clientRef.current.getConnection(name),
+    [],
+  )
+
   return {
     online,
     connections,
@@ -98,5 +142,11 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
     refreshConnections,
     setError,
     dismissError,
+    createConnection,
+    updateConnection,
+    deleteConnection,
+    setDefault,
+    testConnection,
+    getConnection,
   }
 }
