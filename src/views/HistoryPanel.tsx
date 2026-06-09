@@ -37,7 +37,7 @@ export function HistoryPanel({ entries, now, onPick, onClear }: HistoryPanelProp
                   onClick={() => onPick(e.sql)}
                   className="flex w-full flex-col gap-1 rounded-md p-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-800"
                 >
-                  <span className="truncate font-mono text-xs text-slate-700 dark:text-slate-350">{e.sql}</span>
+                  <span className="truncate font-mono text-xs text-slate-700 dark:text-slate-300">{e.sql}</span>
                   <span className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500">
                     <span className="font-mono">{e.connectionId ?? '—'}</span>
                     <span>·</span>
