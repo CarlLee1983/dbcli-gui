@@ -34,6 +34,13 @@ write SQL → result grid → export. `query-only` permission. macOS Apple Silic
 - **schema 樹搜尋 / 結果搜尋**：側邊資料表與結果列皆可即時子字串過濾（客戶端）。
 - **單格詳閱**：點結果格看完整值（JSON/長文字），可複製單格或整列。
 
+## v2 ‧ 連線管理
+
+- **GUI 內管理連線**：側邊「連線列表」標題列 `+` 新增、每條連線 hover 可編輯/刪除。
+- **置中表單**：SQL 三系統（mysql/postgresql/mariadb）結構化欄位 + 「測試連線」即時驗證。
+- **安全寫回 `.dbcli`**：透過 `@carllee1983/dbcli/core`（>=1.30.0）的連線 writer 寫 v2 多連線設定;密碼存連線專屬 env 檔（`{$env}` 參照、per-connection 命名空間），編輯時留白代表不修改、真實密碼不回傳前端。寫設定採原子寫（temp+rename）保護既有設定庫。
+- **v1 自動升級**：對既有 v1 單連線專案新增第二條連線時，自動 migrate 成 v2（非 SQL 連線會擋下，避免毀損設定）。
+
 ## Build order
 
 1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ✓ done
