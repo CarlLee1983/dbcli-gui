@@ -51,3 +51,7 @@ app-icon.png
 test-results/
 playwright-report/
 .superpowers/
+
+# worktrees
+.worktrees/
+.claude/worktrees/
