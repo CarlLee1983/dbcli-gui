@@ -10,14 +10,14 @@ export function ExportButton({ hasResult, onExport }: ExportButtonProps) {
   const [format, setFormat] = useState<'csv' | 'json' | ''>('')
 
   return (
-    <div className="relative inline-flex group">
+    <div className="relative inline-flex group focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 rounded-lg">
       {/* Visual Button */}
       <div 
         className={`
           flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all
           ${!hasResult 
             ? 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50' 
-            : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-750 active:scale-95 cursor-pointer shadow-sm'
+            : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50 active:scale-95 cursor-pointer shadow-sm'
           }
         `}
       >
