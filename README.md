@@ -27,6 +27,13 @@ Lightweight query workstation: read existing `.dbcli` connections → browse sch
 write SQL → result grid → export. `query-only` permission. macOS Apple Silicon first.
 (Data editing, connection-management UI, ER diagrams, etc. are later versions.)
 
+## v1.x 易用性
+
+- **多查詢分頁**：每分頁是獨立查詢 session（各自 SQL/結果/排序/結果搜尋）；連線、schema 樹、查詢歷史跨分頁共用。
+- **查詢歷史**：執行過的查詢記在本機（localStorage、去重、上限 100、標記連線來源），點擊回填到當前分頁。
+- **schema 樹搜尋 / 結果搜尋**：側邊資料表與結果列皆可即時子字串過濾（客戶端）。
+- **單格詳閱**：點結果格看完整值（JSON/長文字），可複製單格或整列。
+
 ## Build order
 
 1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ✓ done
