@@ -83,7 +83,7 @@ test('update with blank password keeps the existing secret', async () => {
   expect(res.status).toBe(200)
   const env = await Bun.file(join(getProjectStoragePath(PROJECT), '.env.staging')).text()
   expect(env).toContain('DBCLI_STAGING_PASSWORD=orig')
-  expect((await readV2Config(PROJECT)).connections.staging.host).toBe('h2')
+  expect((await readV2Config(PROJECT)).connections.staging!.host).toBe('h2')
 })
 
 test('update unknown → 404 NOT_FOUND', async () => {

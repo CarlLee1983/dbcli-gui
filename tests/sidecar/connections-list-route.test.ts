@@ -11,7 +11,7 @@ afterEach(async () => { await server?.stop(true) })
 
 function start(listConnections?: () => Promise<Array<{ name: string; system: string; isDefault: boolean }>>) {
   const pool = new ConnectionPool({ loadConfig: async () => fakeConfig, openAdapter: () => fakeAdapter })
-  server = createServer({ pool, token: 'test', port: 0, listConnections })
+  server = createServer({ pool, token: 'test', port: 0, dbcliPath: '/tmp/dbcli-gui-unused', listConnections })
   return server
 }
 const post = (s: ReturnType<typeof createServer>, path: string, body: unknown, auth = 'Bearer test') =>

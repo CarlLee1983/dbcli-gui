@@ -11,7 +11,7 @@ afterEach(async () => { await server?.stop(true) })
 
 function start() {
   const pool = new ConnectionPool({ loadConfig: async () => fakeConfig, openAdapter: () => fakeAdapter() })
-  server = createServer({ pool, token: 'test', port: 0 })
+  server = createServer({ pool, token: 'test', port: 0, dbcliPath: '/tmp/dbcli-gui-unused' })
   return server
 }
 const post = (s: ReturnType<typeof createServer>, path: string, body: unknown, auth = 'Bearer test') =>
@@ -55,7 +55,7 @@ test('POST /connections/open maps a ConfigError (unknown id / missing config) to
     loadConfig: async () => { const e = new Error("連線 'nope' 不存在"); e.name = 'ConfigError'; throw e },
     openAdapter: () => fakeAdapter(),
   })
-  server = createServer({ pool, token: 'test', port: 0 })
+  server = createServer({ pool, token: 'test', port: 0, dbcliPath: '/tmp/dbcli-gui-unused' })
   const res = await post(server, '/connections/open', { connectionId: 'nope' })
   expect(res.status).toBe(501)
   expect((await res.json() as { error: { code: string } }).error.code).toBe('NOT_CONFIGURED')
@@ -68,7 +68,7 @@ test('POST /connections/open maps a ConnectionError to 502 CONNECTION', async ()
     execute: async () => ({ rows: [] }),
   } as unknown as DatabaseAdapter
   const pool = new ConnectionPool({ loadConfig: async () => fakeConfig, openAdapter: () => downAdapter })
-  server = createServer({ pool, token: 'test', port: 0 })
+  server = createServer({ pool, token: 'test', port: 0, dbcliPath: '/tmp/dbcli-gui-unused' })
   const res = await post(server, '/connections/open', { connectionId: 'main' })
   expect(res.status).toBe(502)
   expect((await res.json() as { error: { code: string } }).error.code).toBe('CONNECTION')

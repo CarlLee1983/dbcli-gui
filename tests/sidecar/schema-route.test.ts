@@ -41,7 +41,7 @@ afterEach(async () => { await server?.stop(true) })
 
 function start() {
   const pool = new ConnectionPool({ loadConfig: async () => fakeConfig, openAdapter: () => fakeAdapter() })
-  server = createServer({ pool, token: 'test', port: 0 })
+  server = createServer({ pool, token: 'test', port: 0, dbcliPath: '/tmp/dbcli-gui-unused' })
   return server
 }
 const post = (s: ReturnType<typeof createServer>, path: string, body: unknown) =>

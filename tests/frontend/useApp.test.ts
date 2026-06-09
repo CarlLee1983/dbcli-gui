@@ -13,6 +13,12 @@ function fakeClient(over: Partial<DbClient> = {}): DbClient {
     schemaTree: async () => ({ tables: [{ name: 't', type: 'table' }] }),
     schemaTable: async () => ({ name: 't', columns: [] }),
     exportRows: async () => {},
+    createConnection: async () => ({ ok: true }),
+    updateConnection: async () => ({ ok: true }),
+    deleteConnection: async () => ({ ok: true }),
+    setDefaultConnection: async () => ({ ok: true }),
+    testConnection: async () => ({ ok: true, ms: 0 }),
+    getConnection: async () => ({ name: '', system: 'mysql', host: '', port: 0, user: '', database: '' }),
     ...over,
   }
 }

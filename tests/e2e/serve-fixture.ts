@@ -25,6 +25,7 @@ createServer({
   pool,
   token: TOKEN,
   port: SIDECAR_PORT,
+  dbcliPath: '/tmp/dbcli-gui-unused',
   listConnections: async () => SEED.map((s) => s.summary),
 })
 

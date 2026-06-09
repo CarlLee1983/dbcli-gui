@@ -8,7 +8,7 @@ const fakeAdapter = { connect: async () => {}, disconnect: async () => {}, execu
 
 function makeServer() {
   const pool = new ConnectionPool({ loadConfig: async () => fakeConfig, openAdapter: () => fakeAdapter })
-  return createServer({ pool, token: 'test', port: 0 })
+  return createServer({ pool, token: 'test', port: 0, dbcliPath: '/tmp/dbcli-gui-unused' })
 }
 
 let server: ReturnType<typeof makeServer> | undefined

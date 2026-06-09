@@ -1,13 +1,14 @@
 import { test, expect, mock, afterEach } from 'bun:test'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { ConnectionFormModal } from '../../src/components/ConnectionFormModal'
+import type { ConnectionFormInput } from '../../src/api/types'
 
 afterEach(cleanup)
 
 const noop = async () => ({ ok: true, ms: 1 })
 
 test('create mode: fills form and submits ConnectionFormInput', async () => {
-  const onSubmit = mock(async () => {})
+  const onSubmit = mock(async (_input: ConnectionFormInput) => {})
   render(<ConnectionFormModal mode="create" onSubmit={onSubmit} onTest={noop} onClose={() => {}} />)
   fireEvent.change(screen.getByLabelText('連線名稱'), { target: { value: 'staging' } })
   fireEvent.change(screen.getByLabelText('主機'), { target: { value: 'db.stg' } })
@@ -17,7 +18,7 @@ test('create mode: fills form and submits ConnectionFormInput', async () => {
   fireEvent.change(screen.getByLabelText('密碼'), { target: { value: 'p' } })
   fireEvent.click(screen.getByRole('button', { name: '儲存' }))
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
-  expect(onSubmit.mock.calls[0][0]).toMatchObject({ name: 'staging', host: 'db.stg', port: 5432, user: 'app', database: 'app', password: 'p' })
+  expect(onSubmit.mock.calls[0]![0]).toMatchObject({ name: 'staging', host: 'db.stg', port: 5432, user: 'app', database: 'app', password: 'p' })
 })
 
 test('edit mode: name is read-only and password placeholder says blank=unchanged', () => {
