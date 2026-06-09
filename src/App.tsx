@@ -4,6 +4,7 @@ import { Sidebar } from './views/Sidebar'
 import { Editor } from './views/Editor'
 import { ResultGrid } from './views/ResultGrid'
 import { ExportButton } from './views/ExportButton'
+import { HistoryPanel } from './views/HistoryPanel'
 
 export function App() {
   const s = useSidecar()
@@ -44,6 +45,12 @@ export function App() {
           </div>
           <ResultGrid result={s.result} />
         </main>
+        <HistoryPanel
+          entries={s.history.entries}
+          now={Date.now()}
+          onPick={s.loadFromHistory}
+          onClear={s.history.clear}
+        />
       </div>
     </div>
   )

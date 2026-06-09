@@ -1,4 +1,4 @@
-import { test, expect } from 'bun:test'
+import { test, expect, beforeEach } from 'bun:test'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useSidecar } from '../../src/hooks/useSidecar'
 import type { DbClient } from '../../src/api/client'
@@ -122,4 +122,23 @@ test('dismissError clears the error', async () => {
   expect(result.current.error?.code).toBe('PERMISSION')
   act(() => result.current.dismissError())
   expect(result.current.error).toBeNull()
+})
+
+beforeEach(() => { localStorage.clear() })
+
+test('successful runQuery records a history entry tagged with the connection', async () => {
+  const { result } = renderHook(() => useSidecar(fakeClient()))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  await act(async () => { await result.current.selectConnection('a') })
+  await act(async () => { result.current.setSql('SELECT 1') })
+  await act(async () => { await result.current.runQuery() })
+  expect(result.current.history.entries[0]?.sql).toBe('SELECT 1')
+  expect(result.current.history.entries[0]?.connectionId).toBe('a')
+})
+
+test('loadFromHistory fills the editor with the given sql', async () => {
+  const { result } = renderHook(() => useSidecar(fakeClient()))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  act(() => { result.current.loadFromHistory('SELECT 42') })
+  expect(result.current.sql).toBe('SELECT 42')
 })

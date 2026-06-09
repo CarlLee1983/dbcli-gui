@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { client as defaultClient, ApiError, type DbClient } from '../api/client'
 import type { ConnectionSummary, QueryResultDto, TreeTable, TableColumnDto } from '../api/types'
+import { useHistory, type HistoryApi } from './useHistory'
 
 export interface SidecarState {
   online: boolean
@@ -23,6 +24,8 @@ export interface SidecarApi extends SidecarState {
   insertSelect(table: string): void
   exportResult(format: 'csv' | 'json'): Promise<void>
   dismissError(): void
+  history: HistoryApi
+  loadFromHistory(sql: string): void
 }
 
 const INTERNAL_STATUS = 0 // no HTTP response (client-side / wrapped error)
@@ -45,6 +48,8 @@ export function useSidecar(client: DbClient = defaultClient): SidecarApi {
   const [result, setResult] = useState<QueryResultDto | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const history = useHistory()
 
   const refreshConnections = useCallback(async () => {
     try {
@@ -113,12 +118,13 @@ export function useSidecar(client: DbClient = defaultClient): SidecarApi {
         }
       }
       setResult(res)
+      history.add({ sql: currentSql, connectionId: connId, ts: Date.now(), rowCount: res.rowCount })
     } catch (err) {
       setError(toApiError(err))
     } finally {
       setLoading(false)
     }
-  }, [activeConnectionId, sql])
+  }, [activeConnectionId, sql, history])
 
   const insertSelect = useCallback((table: string) => {
     setSql(`SELECT * FROM ${table} LIMIT 100`)
@@ -137,11 +143,14 @@ export function useSidecar(client: DbClient = defaultClient): SidecarApi {
 
   const dismissError = useCallback(() => setError(null), [])
 
+  const loadFromHistory = useCallback((value: string) => setSql(value), [])
+
   return {
     // state
     online, connections, activeConnectionId, tree, expandedColumns, sql, result, error, loading,
     // actions
     refreshConnections, selectConnection, loadTableColumns, setSql,
     runQuery, insertSelect, exportResult, dismissError,
+    history, loadFromHistory,
   }
 }
