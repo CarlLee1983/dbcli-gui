@@ -5,7 +5,6 @@ import { ErrorBanner } from './components/ErrorBanner'
 import { Sidebar } from './views/Sidebar'
 import { Editor } from './views/Editor'
 import { ResultGrid } from './views/ResultGrid'
-import { ExportButton } from './views/ExportButton'
 import { TabBar } from './views/TabBar'
 import { HistoryPanel } from './views/HistoryPanel'
 import { ConnectionFormModal } from './components/ConnectionFormModal'
@@ -234,11 +233,15 @@ export function App() {
           <ErrorBanner error={active.error} onDismiss={tabs.dismissError} />
           
           {/* Query Editor Container */}
-          <div style={{ height: editorHeight }} className="flex flex-col flex-shrink-0 min-h-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-2">
-            <div className="flex items-center justify-between gap-2 h-full min-h-0">
-              <Editor sql={active.sql} loading={active.loading} onChange={tabs.setSql} onRun={tabs.runQuery} />
-              <ExportButton hasResult={!!active.result} onExport={app.exportResult} />
-            </div>
+          <div style={{ height: editorHeight }} className="flex flex-col flex-shrink-0 min-h-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4">
+            <Editor
+              sql={active.sql}
+              loading={active.loading}
+              hasResult={!!active.result}
+              onChange={tabs.setSql}
+              onRun={tabs.runQuery}
+              onExport={app.exportResult}
+            />
           </div>
 
           {/* Vertical Resizer Handle */}
