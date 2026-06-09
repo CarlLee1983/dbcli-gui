@@ -64,3 +64,16 @@ test('large result only renders a window of rows, not all', () => {
   const cells = screen.getAllByRole('cell').filter((c) => c.getAttribute('data-col') === 'id')
   expect(cells.length).toBeLessThan(200)
 })
+
+test('result search box filters the rendered rows', () => {
+  render(<ResultGrid result={{ rows: [{ id: 1, label: 'apple' }, { id: 2, label: 'banana' }], fields: ['id', 'label'], rowCount: 2, ms: 1 }} />)
+  fireEvent.change(screen.getByRole('searchbox', { name: '搜尋結果' }), { target: { value: 'app' } })
+  expect(screen.getByText('apple')).toBeDefined()
+  expect(screen.queryByText('banana')).toBeNull()
+})
+
+test('clicking a cell opens the detail modal', () => {
+  render(<ResultGrid result={{ rows: [{ id: 1, label: 'apple' }], fields: ['id', 'label'], rowCount: 1, ms: 1 }} />)
+  fireEvent.click(screen.getByText('apple'))
+  expect(screen.getByRole('dialog', { name: /label 內容/ })).toBeDefined()
+})
