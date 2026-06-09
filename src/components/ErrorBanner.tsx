@@ -4,7 +4,7 @@ import type { ApiError } from '../api/client'
 const FRIENDLY: Record<string, string> = {
   BLACKLISTED: '此表受保護，無法存取',
   PERMISSION: '唯讀模式，不允許寫入語句',
-  // NOT_OPEN: useSidecar retries once; this only shows if the retry also fails.
+  // NOT_OPEN: useTabs retries once; this only shows if the retry also fails.
   NOT_OPEN: '連線未開啟，正在重新連線…',
   CONNECTION: '資料庫連線失敗',
   BAD_REQUEST: '請求格式錯誤',

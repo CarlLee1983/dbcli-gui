@@ -1,15 +1,18 @@
-import { useSidecar } from './hooks/useSidecar'
+import { useApp } from './hooks/useApp'
 import { ErrorBanner } from './components/ErrorBanner'
 import { Sidebar } from './views/Sidebar'
 import { Editor } from './views/Editor'
 import { ResultGrid } from './views/ResultGrid'
 import { ExportButton } from './views/ExportButton'
+import { TabBar } from './views/TabBar'
 import { HistoryPanel } from './views/HistoryPanel'
 
 export function App() {
-  const s = useSidecar()
+  const app = useApp()
+  const { connections: conn, tabs, history } = app
+  const active = tabs.active
 
-  if (!s.online) {
+  if (!conn.online) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-600">
         <p id="offline-msg" className="text-lg">引擎未連線</p>
@@ -27,29 +30,45 @@ export function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <ErrorBanner error={s.error} onDismiss={s.dismissError} />
+      <ErrorBanner error={conn.error} onDismiss={conn.dismissError} />
       <div className="flex min-h-0 flex-1">
         <Sidebar
-          connections={s.connections}
-          activeConnectionId={s.activeConnectionId}
-          tree={s.tree}
-          expandedColumns={s.expandedColumns}
-          onSelectConnection={s.selectConnection}
-          onLoadColumns={s.loadTableColumns}
-          onInsertSelect={s.insertSelect}
+          connections={conn.connections}
+          activeConnectionId={conn.activeConnectionId}
+          tree={conn.tree}
+          expandedColumns={conn.expandedColumns}
+          onSelectConnection={conn.selectConnection}
+          onLoadColumns={conn.loadTableColumns}
+          onInsertSelect={(t) => tabs.loadSql(`SELECT * FROM ${t} LIMIT 100`)}
         />
         <main className="flex min-w-0 flex-1 flex-col">
+          <TabBar
+            sessions={tabs.sessions}
+            activeId={tabs.activeId}
+            onOpen={tabs.openTab}
+            onClose={tabs.closeTab}
+            onSetActive={tabs.setActive}
+            onRename={tabs.renameTab}
+          />
+          <ErrorBanner error={active.error} onDismiss={tabs.dismissError} />
           <div className="flex items-center justify-between border-b border-gray-200 p-2">
-            <Editor sql={s.sql} loading={s.loading} onChange={s.setSql} onRun={s.runQuery} />
-            <ExportButton hasResult={!!s.result} onExport={s.exportResult} />
+            <Editor sql={active.sql} loading={active.loading} onChange={tabs.setSql} onRun={tabs.runQuery} />
+            <ExportButton hasResult={!!active.result} onExport={app.exportResult} />
           </div>
-          <ResultGrid result={s.result} />
+          <ResultGrid
+            result={active.result}
+            filter={active.resultFilter}
+            sortField={active.sortField}
+            sortDir={active.sortDir}
+            onFilterChange={tabs.setResultFilter}
+            onSort={tabs.setSort}
+          />
         </main>
         <HistoryPanel
-          entries={s.history.entries}
+          entries={history.entries}
           now={Date.now()}
-          onPick={s.loadFromHistory}
-          onClear={s.history.clear}
+          onPick={tabs.loadSql}
+          onClear={history.clear}
         />
       </div>
     </div>
