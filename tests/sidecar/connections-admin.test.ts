@@ -51,6 +51,24 @@ test('create adds a connection + writes its secret, retrievable via reader', asy
   expect(process.env.DBCLI_STAGING_PASSWORD).toBe('sekret')
 })
 
+test('create against a v1 project migrates it to v2 then adds the connection', async () => {
+  // overwrite the seeded v2 config.json with a v1 (single-connection) one
+  const v1 = {
+    connection: { system: 'mysql', host: 'localhost', port: 3306, user: 'root', password: '', database: 'app' },
+    permission: 'query-only', schema: {}, metadata: { version: '1.0' },
+    blacklist: { tables: [], columns: {} },
+    audit: { enabled: true, rotation: { max_bytes: 10485760, max_entries: 1000 } },
+  }
+  await Bun.write(join(getProjectStoragePath(PROJECT), 'config.json'), JSON.stringify(v1, null, 2))
+
+  const res = await handlers.create(req({ name: 'staging', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd', password: 'p' }))
+  expect(res.status).toBe(200)
+
+  const cfg = await readV2Config(PROJECT)
+  expect(cfg.version).toBe(2)
+  expect(Object.keys(cfg.connections).sort()).toEqual(['default', 'staging'])
+})
+
 test('create on a duplicate name → 409 CONFLICT', async () => {
   const res = await handlers.create(req({ name: 'primary', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
   expect(res.status).toBe(409)
