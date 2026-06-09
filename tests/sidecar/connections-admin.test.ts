@@ -1,0 +1,92 @@
+import { test, expect, beforeEach, afterEach } from 'bun:test'
+import { join } from 'path'
+import { writeV2Config, readV2Config, resolveConnection, loadConnectionEnv } from '@carllee1983/dbcli/core'
+import { writeProjectBinding, getProjectStoragePath } from '@carllee1983/dbcli/core'
+import { makeConnectionAdminHandlers } from '../../sidecar/routes/connections-admin'
+
+const TMP = '/tmp/dbcli-gui-admin-test'
+const PROJECT = join(TMP, '.dbcli')
+
+function initialConfig() {
+  return {
+    version: 2, default: 'primary',
+    connections: {
+      primary: { system: 'mysql', host: 'localhost', port: 3306, user: 'root',
+        password: { $env: 'DBCLI_PRIMARY_PASSWORD' }, database: 'app', permission: 'query-only', envFile: '.env.primary' },
+    },
+    schema: {}, schemas: {}, metadata: { version: '2.0' },
+    blacklist: { tables: [], columns: {} },
+    audit: { enabled: true, rotation: { max_bytes: 10485760, max_entries: 1000 } },
+  }
+}
+
+function req(body: unknown): Request {
+  return new Request('http://x', { method: 'POST', body: JSON.stringify(body) })
+}
+
+let handlers: ReturnType<typeof makeConnectionAdminHandlers>
+
+beforeEach(async () => {
+  await Bun.$`rm -rf ${TMP}`
+  await Bun.$`mkdir -p ${PROJECT}`
+  await writeProjectBinding(PROJECT, getProjectStoragePath(PROJECT))
+  await writeV2Config(PROJECT, initialConfig() as never)
+  handlers = makeConnectionAdminHandlers(PROJECT)
+})
+afterEach(async () => {
+  await Bun.$`rm -rf ${TMP}`
+  delete process.env.DBCLI_STAGING_PASSWORD
+})
+
+test('create adds a connection + writes its secret, retrievable via reader', async () => {
+  const res = await handlers.create(req({
+    name: 'staging', system: 'postgresql', host: 'db.stg', port: 5432, user: 'app', database: 'app', password: 'sekret',
+  }))
+  expect(res.status).toBe(200)
+
+  const cfg = await readV2Config(PROJECT)
+  expect(Object.keys(cfg.connections).sort()).toEqual(['primary', 'staging'])
+  const resolved = resolveConnection(cfg, 'staging')
+  await loadConnectionEnv(resolved, getProjectStoragePath(PROJECT))
+  expect(process.env.DBCLI_STAGING_PASSWORD).toBe('sekret')
+})
+
+test('create on a duplicate name → 409 CONFLICT', async () => {
+  const res = await handlers.create(req({ name: 'primary', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
+  expect(res.status).toBe(409)
+  expect((await res.json()).error.code).toBe('CONFLICT')
+})
+
+test('update with blank password keeps the existing secret', async () => {
+  await handlers.create(req({ name: 'staging', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd', password: 'orig' }))
+  const res = await handlers.update(req({ name: 'staging', system: 'mysql', host: 'h2', port: 3307, user: 'u', database: 'd' }))
+  expect(res.status).toBe(200)
+  const env = await Bun.file(join(getProjectStoragePath(PROJECT), '.env.staging')).text()
+  expect(env).toContain('DBCLI_STAGING_PASSWORD=orig')
+  expect((await readV2Config(PROJECT)).connections.staging.host).toBe('h2')
+})
+
+test('update unknown → 404 NOT_FOUND', async () => {
+  const res = await handlers.update(req({ name: 'ghost', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
+  expect(res.status).toBe(404)
+})
+
+test('delete removes; deleting the only connection → 409', async () => {
+  await handlers.create(req({ name: 'staging', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
+  expect((await handlers.remove(req({ name: 'staging' }))).status).toBe(200)
+  const res = await handlers.remove(req({ name: 'primary' })) // last one
+  expect(res.status).toBe(409)
+})
+
+test('set-default switches the default', async () => {
+  await handlers.create(req({ name: 'staging', system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
+  expect((await handlers.setDefault(req({ name: 'staging' }))).status).toBe(200)
+  expect((await readV2Config(PROJECT)).default).toBe('staging')
+})
+
+test('get returns fields without the password', async () => {
+  const res = await handlers.get(new Request('http://x/connections/get?name=primary'))
+  const body = await res.json()
+  expect(body).toMatchObject({ name: 'primary', system: 'mysql', host: 'localhost', port: 3306, user: 'root', database: 'app' })
+  expect(body.password).toBeUndefined()
+})
