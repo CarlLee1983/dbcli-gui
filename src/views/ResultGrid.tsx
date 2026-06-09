@@ -75,7 +75,7 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
         style={{ maxHeight: VIEWPORT_HEIGHT }}
       >
         <table className="w-full border-separate border-spacing-0 text-left font-mono">
-          <thead className="sticky top-0 bg-slate-50 dark:bg-slate-850 z-10">
+          <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
             <tr className="border-b border-slate-300 dark:border-slate-700">
               {result.fields.map((f) => (
                 <th
