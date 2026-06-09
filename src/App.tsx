@@ -8,6 +8,8 @@ import { ResultGrid } from './views/ResultGrid'
 import { ExportButton } from './views/ExportButton'
 import { TabBar } from './views/TabBar'
 import { HistoryPanel } from './views/HistoryPanel'
+import { ConnectionFormModal } from './components/ConnectionFormModal'
+import type { ConnectionDetail } from './api/types'
 
 export function App() {
   const app = useApp()
@@ -23,6 +25,18 @@ export function App() {
   // Collapse state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true')
   const [historyCollapsed, setHistoryCollapsed] = useState(() => localStorage.getItem('historyCollapsed') === 'true')
+
+  // Connection modal state
+  const [connModal, setConnModal] = useState<{ mode: 'create' | 'edit'; initial?: ConnectionDetail } | null>(null)
+
+  const openEdit = async (name: string) => {
+    try { setConnModal({ mode: 'edit', initial: await conn.getConnection(name) }) }
+    catch { /* 錯誤已進 error channel */ }
+  }
+  const removeConn = async (name: string) => {
+    if (!window.confirm(`確定刪除連線「${name}」?`)) return
+    await conn.deleteConnection(name).catch(() => {})
+  }
 
   // Dragging handler state
   const [activeResizer, setActiveResizer] = useState<'sidebar' | 'history' | 'editor' | null>(null)
@@ -178,6 +192,9 @@ export function App() {
             onSelectConnection={conn.selectConnection}
             onLoadColumns={conn.loadTableColumns}
             onInsertSelect={(t) => tabs.loadSql(`SELECT * FROM ${t} LIMIT 100`)}
+            onAddConnection={() => setConnModal({ mode: 'create' })}
+            onEditConnection={openEdit}
+            onDeleteConnection={removeConn}
           />
         </div>
 
@@ -283,6 +300,17 @@ export function App() {
       {/* Global Drag Shield overlay to prevent text selection and iframe issues */}
       {activeResizer && (
         <div className={`fixed inset-0 z-50 ${activeResizer === 'editor' ? 'cursor-row-resize' : 'cursor-col-resize'}`} />
+      )}
+
+      {/* Connection Form Modal */}
+      {connModal && (
+        <ConnectionFormModal
+          mode={connModal.mode}
+          initial={connModal.initial}
+          onSubmit={connModal.mode === 'create' ? conn.createConnection : conn.updateConnection}
+          onTest={conn.testConnection}
+          onClose={() => setConnModal(null)}
+        />
       )}
     </div>
   )

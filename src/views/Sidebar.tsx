@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Table2, Eye, Play, Database, KeyRound, Search } from 'lucide-react'
+import { Table2, Eye, Play, Database, KeyRound, Search, Plus, Pencil, Trash2 } from 'lucide-react'
 import type { ConnectionSummary, TreeTable, TableColumnDto } from '../api/types'
 import { filterTree } from './tree-filter'
 
@@ -11,6 +11,9 @@ export interface SidebarProps {
   onSelectConnection(id: string): void
   onLoadColumns(table: string): void
   onInsertSelect(table: string): void
+  onAddConnection(): void
+  onEditConnection(name: string): void
+  onDeleteConnection(name: string): void
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -20,18 +23,22 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside className="flex h-full w-full flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-sm">
       <section className="border-b border-slate-200 dark:border-slate-800 p-3">
-        <h2 className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-          <Database className="h-3.5 w-3.5" /> 連線列表
+        <h2 className="mb-2 flex items-center justify-between px-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+          <span className="flex items-center gap-1.5"><Database className="h-3.5 w-3.5" /> 連線列表</span>
+          <button type="button" aria-label="新增連線" onClick={props.onAddConnection}
+            className="rounded p-0.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 cursor-pointer">
+            <Plus className="h-3.5 w-3.5" />
+          </button>
         </h2>
         <ul className="flex flex-col gap-0.5">
           {connections.map((c) => (
-            <li key={c.name}>
+            <li key={c.name} className="group flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => props.onSelectConnection(c.name)}
-                className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left transition-colors cursor-pointer text-xs ${
-                  c.name === activeConnectionId 
-                    ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-950/40 dark:text-blue-400' 
+                className={`flex flex-1 items-center justify-between rounded px-2.5 py-1.5 text-left transition-colors cursor-pointer text-xs ${
+                  c.name === activeConnectionId
+                    ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-950/40 dark:text-blue-400'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 }`}
               >
@@ -40,6 +47,12 @@ export function Sidebar(props: SidebarProps) {
                   <span className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 text-[10px] text-slate-400 dark:text-slate-500 font-medium">預設</span>
                 ) : null}
               </button>
+              <span className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                <button type="button" aria-label={`編輯連線 ${c.name}`} onClick={() => props.onEditConnection(c.name)}
+                  className="rounded p-1 text-slate-400 hover:text-blue-600 cursor-pointer"><Pencil className="h-3 w-3" /></button>
+                <button type="button" aria-label={`刪除連線 ${c.name}`} onClick={() => props.onDeleteConnection(c.name)}
+                  className="rounded p-1 text-slate-400 hover:text-red-600 cursor-pointer"><Trash2 className="h-3 w-3" /></button>
+              </span>
             </li>
           ))}
         </ul>

@@ -1,4 +1,5 @@
 import { test, expect, afterEach } from 'bun:test'
+import { mock } from 'bun:test'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { Sidebar } from '../../src/views/Sidebar'
 import type { ConnectionSummary, TreeTable, TableColumnDto } from '../../src/api/types'
@@ -23,6 +24,9 @@ function setup(over: Partial<React.ComponentProps<typeof Sidebar>> = {}) {
       onSelectConnection={(id) => calls.select.push(id)}
       onLoadColumns={(t) => calls.load.push(t)}
       onInsertSelect={(t) => calls.insert.push(t)}
+      onAddConnection={() => {}}
+      onEditConnection={() => {}}
+      onDeleteConnection={() => {}}
       {...over}
     />,
   )
@@ -75,4 +79,26 @@ test('typing in the schema search box filters the table list', () => {
   fireEvent.change(screen.getByRole('searchbox', { name: '搜尋資料表' }), { target: { value: 'user' } })
   expect(screen.getByText('users')).toBeDefined()
   expect(screen.queryByText('v_active')).toBeNull()
+})
+
+test('header + button triggers onAddConnection', () => {
+  const onAdd = mock(() => {})
+  render(<Sidebar connections={[{ name: 'primary', system: 'mysql', isDefault: true }]}
+    activeConnectionId={null} tree={[]} expandedColumns={{}}
+    onSelectConnection={() => {}} onLoadColumns={() => {}} onInsertSelect={() => {}}
+    onAddConnection={onAdd} onEditConnection={() => {}} onDeleteConnection={() => {}} />)
+  fireEvent.click(screen.getByRole('button', { name: '新增連線' }))
+  expect(onAdd).toHaveBeenCalledTimes(1)
+})
+
+test('per-connection edit / delete buttons fire with the name', () => {
+  const onEdit = mock((_: string) => {}); const onDelete = mock((_: string) => {})
+  render(<Sidebar connections={[{ name: 'primary', system: 'mysql', isDefault: true }]}
+    activeConnectionId={null} tree={[]} expandedColumns={{}}
+    onSelectConnection={() => {}} onLoadColumns={() => {}} onInsertSelect={() => {}}
+    onAddConnection={() => {}} onEditConnection={onEdit} onDeleteConnection={onDelete} />)
+  fireEvent.click(screen.getByRole('button', { name: '編輯連線 primary' }))
+  fireEvent.click(screen.getByRole('button', { name: '刪除連線 primary' }))
+  expect(onEdit).toHaveBeenCalledWith('primary')
+  expect(onDelete).toHaveBeenCalledWith('primary')
 })
