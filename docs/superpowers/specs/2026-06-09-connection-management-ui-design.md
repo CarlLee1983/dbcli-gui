@@ -60,7 +60,7 @@ resolveConfigStoragePath(projectPath: string): Promise<string>
 // 新增 — 純函式(immutable,回新 config 物件)
 type ConnectionInput = {
   name: string
-  system: 'mysql' | 'postgres' | 'mariadb'
+  system: 'mysql' | 'postgresql' | 'mariadb'   // 注意:dbcli 內部值為 'postgresql'
   host: string
   port: number
   user: string
@@ -104,7 +104,7 @@ writeConnectionSecret(storagePath: string, connName: string,
 
 - **v1→v2 migration 接點**:`create` 時若 `detectConfigVersion` === 1 → 先 `migrateV1ToV2` 再 upsert,一次 `writeV2Config` 落地。
 - **原子寫(硬性要求)**:寫設定採 write-temp-then-rename,避免中途崩潰毀掉使用者真實設定庫;寫前可留一份備份。
-- **刪預設策略**:刪掉目前的預設連線時,若仍有其他連線則自動把第一條設為預設;若刪到最後一條則允許。
+- **刪預設策略**:刪掉目前的預設連線時,若仍有其他連線則自動把第一條設為預設。**刪最後一條連線一律擋下**(v2 schema 強制 `connections` 至少一條;回 `CONFLICT`)。
 - **測試連線的 adapter 生命週期**:test 用「未存檔的表單值」臨時組 adapter,與連線池(持久連線)分離,測完即 `disconnect`,不進池。
 - **寫入不自動測試**:`create` / `update` 只寫設定,不強制先測試連線;測試是使用者在表單按「測試連線」觸發的獨立動作(打 `/connections/test`)。允許先存後測。
 
