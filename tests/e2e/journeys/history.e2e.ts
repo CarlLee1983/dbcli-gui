@@ -4,7 +4,7 @@ import { APP_PATH } from '../fixtures/config'
 
 test('running a query records it in history and clicking reloads the SQL', async ({ page }) => {
   await page.goto(APP_PATH)
-  await page.getByRole('button', { name: 'main' }).click()
+  await page.getByRole('button', { name: 'main', exact: true }).click()
   const editor = page.getByRole('textbox', { name: 'SQL 查詢' })
   await editor.fill('SELECT * FROM orders')
   await page.getByRole('button', { name: 'Run' }).click()

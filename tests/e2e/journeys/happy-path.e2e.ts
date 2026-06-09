@@ -5,7 +5,7 @@ test('connect → browse schema → run query → see rows', async ({ page }) =>
   await page.goto(APP_PATH)
 
   // connections listed in the sidebar; pick the default one
-  await page.getByRole('button', { name: 'main' }).click()
+  await page.getByRole('button', { name: 'main', exact: true }).click()
 
   // schema tree shows the (non-blacklisted) tables
   await expect(page.getByRole('button', { name: 'orders', exact: true })).toBeVisible()

@@ -3,7 +3,7 @@ import { APP_PATH } from '../fixtures/config'
 
 test('a blacklisted table is hidden from the tree and rejected on query', async ({ page }) => {
   await page.goto(APP_PATH)
-  await page.getByRole('button', { name: 'main' }).click()
+  await page.getByRole('button', { name: 'main', exact: true }).click()
 
   // table-level: secret_table never appears in the schema tree
   await expect(page.getByRole('button', { name: 'orders', exact: true })).toBeVisible()
@@ -17,7 +17,7 @@ test('a blacklisted table is hidden from the tree and rejected on query', async 
 
 test('a blacklisted column is omitted from query results', async ({ page }) => {
   await page.goto(APP_PATH)
-  await page.getByRole('button', { name: 'main' }).click()
+  await page.getByRole('button', { name: 'main', exact: true }).click()
 
   await page.getByRole('textbox', { name: 'SQL 查詢' }).fill('SELECT * FROM users')
   await page.getByRole('button', { name: 'Run' }).click()

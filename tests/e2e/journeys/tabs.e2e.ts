@@ -4,7 +4,7 @@ import { APP_PATH } from '../fixtures/config'
 
 test('a second tab runs queries independently of the first', async ({ page }) => {
   await page.goto(APP_PATH)
-  await page.getByRole('button', { name: 'main' }).click()
+  await page.getByRole('button', { name: 'main', exact: true }).click()
 
   // tab 1: query orders
   const editor = page.getByRole('textbox', { name: 'SQL 查詢' })

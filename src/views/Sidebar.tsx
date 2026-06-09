@@ -35,6 +35,7 @@ export function Sidebar(props: SidebarProps) {
             <li key={c.name} className="group flex items-center gap-1">
               <button
                 type="button"
+                aria-label={c.name}
                 onClick={() => props.onSelectConnection(c.name)}
                 className={`flex flex-1 items-center justify-between rounded px-2.5 py-1.5 text-left transition-colors cursor-pointer text-xs ${
                   c.name === activeConnectionId

@@ -3,7 +3,7 @@ import { APP_PATH } from '../fixtures/config'
 
 test('a failing query surfaces the error banner and the app stays usable', async ({ page }) => {
   await page.goto(APP_PATH)
-  await page.getByRole('button', { name: 'main' }).click()
+  await page.getByRole('button', { name: 'main', exact: true }).click()
 
   // The FORCE_ERROR sentinel makes the fake adapter throw a ConnectionError.
   await page.getByRole('textbox', { name: 'SQL 查詢' }).fill("SELECT * FROM orders WHERE label = 'FORCE_ERROR'")

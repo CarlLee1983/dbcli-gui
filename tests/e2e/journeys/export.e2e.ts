@@ -6,7 +6,7 @@ import { APP_PATH } from '../fixtures/config'
 // anchor, so Playwright's download event fires and we can read the file.
 async function runOrdersQuery(page: Page) {
   await page.goto(APP_PATH)
-  await page.getByRole('button', { name: 'main' }).click()
+  await page.getByRole('button', { name: 'main', exact: true }).click()
   await page.getByRole('textbox', { name: 'SQL 查詢' }).fill('SELECT * FROM orders')
   await page.getByRole('button', { name: 'Run' }).click()
   await expect(page.locator('td[data-col="id"]').first()).toBeVisible()
