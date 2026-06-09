@@ -30,8 +30,9 @@ write SQL → result grid → export. `query-only` permission. macOS Apple Silic
 ## Build order
 
 1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ✓ done
-2. **React frontend** (builds against the sidecar). ← current
-3. Tauri shell (wires them together + packaging).
+2. **React frontend** (builds against the sidecar). ✓ done
+3. **Tauri shell** (wires them together) — `bun run tauri dev` opens the native window. ✓ done
+   (Distributable packaging — `.app`/`.dmg`, signing, notarize — is later work.)
 
 ## Conventions
 
