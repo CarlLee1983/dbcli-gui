@@ -10,6 +10,7 @@ if (import.meta.main) {
     pool,
     token: cfg.token,
     port: cfg.port,
+    dbcliPath: cfg.dbcliPath,
     listConnections: defaultConnectionLister(cfg.dbcliPath),
   })
 

@@ -9,11 +9,13 @@ import { makeConnectionHandlers, makeListHandler, type ConnectionLister } from '
 import { makeQueryHandler } from './routes/query'
 import { makeSchemaHandlers } from './routes/schema'
 import { makeExportHandler } from './routes/export'
+import { makeConnectionAdminHandlers } from './routes/connections-admin'
 
 export interface ServerDeps {
   pool: ConnectionPool
   token: string
   port: number
+  dbcliPath: string
   listConnections?: ConnectionLister
 }
 
@@ -24,6 +26,7 @@ const guard = (token: string, h: Handler): Handler => (req) =>
 export function createServer(deps: ServerDeps): Server<unknown> {
   const conn = makeConnectionHandlers(deps.pool)
   const schema = makeSchemaHandlers(deps.pool)
+  const admin = makeConnectionAdminHandlers(deps.dbcliPath)
   const post = (h: Handler) => ({ POST: withCors(guard(deps.token, h)), OPTIONS: corsPreflight })
   return Bun.serve({
     port: deps.port,
@@ -36,6 +39,12 @@ export function createServer(deps: ServerDeps): Server<unknown> {
       '/schema/tree': post(schema.tree),
       '/schema/table': post(schema.table),
       '/export': post(makeExportHandler(deps.pool)),
+      '/connections/create': post(admin.create),
+      '/connections/update': post(admin.update),
+      '/connections/delete': post(admin.remove),
+      '/connections/set-default': post(admin.setDefault),
+      '/connections/test': post(admin.test),
+      '/connections/get': { GET: withCors(guard(deps.token, admin.get)), OPTIONS: corsPreflight },
     },
     fetch: withCors(() => json({ error: { code: 'NOT_FOUND', message: 'No such route' } }, 404)),
   })
