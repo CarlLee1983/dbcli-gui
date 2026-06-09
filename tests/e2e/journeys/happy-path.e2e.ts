@@ -17,5 +17,6 @@ test('connect → browse schema → run query → see rows', async ({ page }) =>
   // result grid renders the seeded rows
   await expect(page.locator('td[data-col="id"]').first()).toBeVisible()
   await expect(page.getByText('orders-row-1')).toBeVisible()
-  await expect(page.getByText(/3 列/)).toBeVisible()
+  // Scope to <footer> to avoid matching the same count shown in the HistoryPanel entry.
+  await expect(page.locator('footer').filter({ hasText: /3 列/ })).toBeVisible()
 })
