@@ -37,3 +37,14 @@ test('測試連線 shows the result', async () => {
   fireEvent.click(screen.getByRole('button', { name: '測試連線' }))
   await waitFor(() => expect(screen.getByText(/成功/)).toBeTruthy())
 })
+
+test('測試連線 shows the failure message when onTest throws', async () => {
+  render(<ConnectionFormModal mode="create" onSubmit={async () => {}}
+    onTest={async () => { throw new Error('連線被拒') }} onClose={() => {}} />)
+  fireEvent.change(screen.getByLabelText('主機'), { target: { value: 'h' } })
+  fireEvent.change(screen.getByLabelText('連接埠'), { target: { value: '3306' } })
+  fireEvent.change(screen.getByLabelText('使用者'), { target: { value: 'u' } })
+  fireEvent.change(screen.getByLabelText('資料庫'), { target: { value: 'd' } })
+  fireEvent.click(screen.getByRole('button', { name: '測試連線' }))
+  await waitFor(() => expect(screen.getByText(/連線被拒/)).toBeTruthy())
+})
