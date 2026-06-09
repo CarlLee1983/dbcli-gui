@@ -50,3 +50,4 @@ app-icon.png
 # Playwright E2E artifacts
 test-results/
 playwright-report/
+.superpowers/
