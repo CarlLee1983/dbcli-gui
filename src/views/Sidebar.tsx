@@ -47,7 +47,7 @@ export function Sidebar(props: SidebarProps) {
                   <span className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 text-[10px] text-slate-400 dark:text-slate-500 font-medium">預設</span>
                 ) : null}
               </button>
-              <span className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 <button type="button" aria-label={`編輯連線 ${c.name}`} onClick={() => props.onEditConnection(c.name)}
                   className="rounded p-1 text-slate-400 hover:text-blue-600 cursor-pointer"><Pencil className="h-3 w-3" /></button>
                 <button type="button" aria-label={`刪除連線 ${c.name}`} onClick={() => props.onDeleteConnection(c.name)}
