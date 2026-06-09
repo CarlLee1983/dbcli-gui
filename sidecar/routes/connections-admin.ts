@@ -9,7 +9,12 @@ import { ConnectionInputBody, ConnectionNameBody, TestConnectionBody } from '../
 import { toErrorBody, statusForCode } from '../../shared/errors'
 import { json } from '../http'
 
-/** Read the current v2 config, migrating a v1 project on first write. */
+/**
+ * Read the current config as v2. A v1 project is migrated IN MEMORY only —
+ * this read does not persist. Callers that mutate then `writeV2Config` are what
+ * actually lands the migrated v2 on disk (every write path here does so), so the
+ * migration is committed exactly when the first connection write happens.
+ */
 async function loadV2(dbcliPath: string) {
   const storagePath = await resolveConfigStoragePath(dbcliPath)
   const raw = await Bun.file(join(storagePath, 'config.json')).json().catch(() => undefined)
