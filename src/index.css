@@ -5,7 +5,7 @@
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-@variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {
@@ -19,13 +19,15 @@
   background: #cbd5e1;
   border-radius: 3px;
 }
-.dark ::-webkit-scrollbar-thumb {
+.dark ::-webkit-scrollbar-thumb,
+.dark::-webkit-scrollbar-thumb {
   background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
-.dark ::-webkit-scrollbar-thumb:hover {
+.dark ::-webkit-scrollbar-thumb:hover,
+.dark::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
 
