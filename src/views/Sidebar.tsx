@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Table2, Eye, Play, Database, KeyRound } from 'lucide-react'
 import type { ConnectionSummary, TreeTable, TableColumnDto } from '../api/types'
+import { filterTree } from './tree-filter'
 
 export interface SidebarProps {
   connections: ConnectionSummary[]
@@ -13,6 +15,8 @@ export interface SidebarProps {
 
 export function Sidebar(props: SidebarProps) {
   const { connections, activeConnectionId, tree, expandedColumns } = props
+  const [tableQuery, setTableQuery] = useState('')
+  const visibleTree = filterTree(tree, tableQuery)
   return (
     <aside className="flex w-64 flex-col border-r border-gray-200 bg-gray-50 text-sm">
       <section className="border-b border-gray-200 p-2">
@@ -39,8 +43,16 @@ export function Sidebar(props: SidebarProps) {
 
       <section className="min-h-0 flex-1 overflow-auto p-2">
         <h2 className="mb-1 px-1 text-xs font-semibold uppercase text-gray-400">資料表</h2>
+        <input
+          type="search"
+          aria-label="搜尋資料表"
+          value={tableQuery}
+          onChange={(e) => setTableQuery(e.target.value)}
+          placeholder="搜尋資料表…"
+          className="mb-2 w-full rounded border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none"
+        />
         <ul>
-          {tree.map((t) => {
+          {visibleTree.map((t) => {
             const columns = expandedColumns[t.name]
             return (
               <li key={t.name}>

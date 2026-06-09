@@ -69,3 +69,10 @@ test('the insert-select button calls onInsertSelect', () => {
   fireEvent.click(screen.getByRole('button', { name: /查詢 users/ }))
   expect(calls.insert).toEqual(['users'])
 })
+
+test('typing in the schema search box filters the table list', () => {
+  setup()
+  fireEvent.change(screen.getByRole('searchbox', { name: '搜尋資料表' }), { target: { value: 'user' } })
+  expect(screen.getByText('users')).toBeDefined()
+  expect(screen.queryByText('v_active')).toBeNull()
+})
