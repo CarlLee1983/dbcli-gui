@@ -3,6 +3,9 @@ import { SPA_PORT } from './tests/e2e/fixtures/config'
 
 export default defineConfig({
   testDir: './tests/e2e/journeys',
+  // Journeys use the `.e2e.ts` suffix (not `.spec.ts`/`.test.ts`) so Bun's test
+  // runner never discovers them — `bun test` would fail on @playwright/test's
+  // `test()` outside its own runner. Keep this suffix for any new journey file.
   testMatch: '**/*.e2e.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
