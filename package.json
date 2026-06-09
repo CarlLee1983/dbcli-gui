@@ -8,7 +8,7 @@
     "sidecar": "bun run sidecar/index.ts",
     "dev": "bun run dev/serve.ts",
     "build": "bun run build.ts",
-    "test": "bun test tests/sidecar tests/dev tests/frontend",
+    "test": "bun test",
     "tauri": "tauri",
     "e2e": "playwright test"
   },
