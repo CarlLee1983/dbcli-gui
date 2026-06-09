@@ -130,6 +130,13 @@ test('test handler returns ok on a successful ping', async () => {
   expect((await res.json()).ok).toBe(true)
 })
 
+test('test handler maps a false ping to CONNECTION 502', async () => {
+  const h = makeConnectionAdminHandlers(PROJECT, { createAdapter: () => fakeAdapter({ ping: false }) })
+  const res = await h.test(req({ system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
+  expect(res.status).toBe(502)
+  expect((await res.json()).error.code).toBe('CONNECTION')
+})
+
 test('test handler maps a connect failure to CONNECTION 502', async () => {
   const h = makeConnectionAdminHandlers(PROJECT, {
     createAdapter: () => fakeAdapter({ connect: async () => { throw new ConnectionError('ECONNREFUSED', 'refused', []) } }),

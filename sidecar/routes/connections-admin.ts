@@ -107,7 +107,7 @@ export function makeConnectionAdminHandlers(dbcliPath: string, deps: AdminDeps =
     async test(req: Request): Promise<Response> {
       const p = TestConnectionBody.safeParse(await req.json().catch(() => null))
       if (!p.success) return bad()
-      const adapter = createAdapter(p.data as SqlConnectionOptions)
+      const adapter = createAdapter({ ...p.data, password: p.data.password ?? '' } as SqlConnectionOptions)
       const started = Date.now()
       try {
         await adapter.connect()
