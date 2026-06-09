@@ -4,6 +4,7 @@ import type {
   TreeTable,
   TableSchemaDto,
 } from './types'
+import { saveFile } from './save-file'
 
 export class ApiError extends Error {
   constructor(
@@ -42,18 +43,6 @@ function filenameFromDisposition(header: string | null, fallback: string): strin
   if (!header) return fallback
   const match = /filename="([^"]+)"|filename=([^;,\s]+)/.exec(header)
   return match?.[1] ?? match?.[2] ?? fallback
-}
-
-/** Build a download via a transient <a download> anchor. */
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
 }
 
 export interface DbClient {
@@ -119,7 +108,7 @@ export function makeClient(base: string, token: string): DbClient {
       }
       const blob = await res.blob()
       const filename = filenameFromDisposition(res.headers.get('content-disposition'), `export.${format}`)
-      triggerDownload(blob, filename)
+      await saveFile(filename, blob)
     },
   }
 }

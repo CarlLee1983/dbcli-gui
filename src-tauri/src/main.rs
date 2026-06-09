@@ -41,8 +41,18 @@ fn repo_root() -> std::path::PathBuf {
         .to_path_buf()
 }
 
+/// Write an exported file to a user-chosen path. The frontend picks the path via the
+/// native save dialog (plugin-dialog), then hands us the text to write — `std::fs` has
+/// no fs-scope restriction, unlike the fs plugin. App commands need no capability.
+#[tauri::command]
+fn write_export(path: String, contents: String) -> Result<(), String> {
+    std::fs::write(&path, contents).map_err(|e| format!("failed to write {path}: {e}"))
+}
+
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![write_export])
         .manage(SidecarState(Mutex::new(None)))
         .setup(|app| {
             // 1. spawn the sidecar; KillOnDrop ensures no orphan if startup fails below
