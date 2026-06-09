@@ -2,6 +2,8 @@ import { test, expect, beforeEach, afterEach } from 'bun:test'
 import { join } from 'path'
 import { writeV2Config, readV2Config, resolveConnection, loadConnectionEnv } from '@carllee1983/dbcli/core'
 import { writeProjectBinding, getProjectStoragePath } from '@carllee1983/dbcli/core'
+import type { DatabaseAdapter } from '@carllee1983/dbcli/core'
+import { ConnectionError } from '@carllee1983/dbcli/core'
 import { makeConnectionAdminHandlers } from '../../sidecar/routes/connections-admin'
 
 const TMP = '/tmp/dbcli-gui-admin-test'
@@ -107,4 +109,32 @@ test('get returns fields without the password', async () => {
   const body = await res.json()
   expect(body).toMatchObject({ name: 'primary', system: 'mysql', host: 'localhost', port: 3306, user: 'root', database: 'app' })
   expect(body.password).toBeUndefined()
+})
+
+function fakeAdapter(result: { connect?: () => Promise<void>; ping?: boolean }): DatabaseAdapter {
+  return {
+    connect: result.connect ?? (async () => {}),
+    disconnect: async () => {},
+    testConnection: async () => result.ping ?? true,
+    execute: async () => ({}) as never,
+    listTables: async () => [],
+    getTableSchema: async () => ({}) as never,
+    getServerVersion: async () => '0',
+  } as unknown as DatabaseAdapter
+}
+
+test('test handler returns ok on a successful ping', async () => {
+  const h = makeConnectionAdminHandlers(PROJECT, { createAdapter: () => fakeAdapter({ ping: true }) })
+  const res = await h.test(req({ system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd', password: 'p' }))
+  expect(res.status).toBe(200)
+  expect((await res.json()).ok).toBe(true)
+})
+
+test('test handler maps a connect failure to CONNECTION 502', async () => {
+  const h = makeConnectionAdminHandlers(PROJECT, {
+    createAdapter: () => fakeAdapter({ connect: async () => { throw new ConnectionError('ECONNREFUSED', 'refused', []) } }),
+  })
+  const res = await h.test(req({ system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }))
+  expect(res.status).toBe(502)
+  expect((await res.json()).error.code).toBe('CONNECTION')
 })

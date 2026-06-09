@@ -2,9 +2,10 @@ import {
   readV2Config, writeV2Config, detectConfigVersion, migrateV1ToV2, readConfig,
   upsertConnection, removeConnection, setDefaultConnection, writeConnectionSecret,
   resolveConfigStoragePath, type ConnectionInput,
+  AdapterFactory, type DatabaseAdapter, type SqlConnectionOptions,
 } from '@carllee1983/dbcli/core'
 import { join } from 'node:path'
-import { ConnectionInputBody, ConnectionNameBody } from '../../shared/schemas'
+import { ConnectionInputBody, ConnectionNameBody, TestConnectionBody } from '../../shared/schemas'
 import { toErrorBody, statusForCode } from '../../shared/errors'
 import { json } from '../http'
 
@@ -17,7 +18,12 @@ async function loadV2(dbcliPath: string) {
   return migrateV1ToV2(v1)
 }
 
-export function makeConnectionAdminHandlers(dbcliPath: string) {
+export interface AdminDeps {
+  createAdapter?: (opts: SqlConnectionOptions) => DatabaseAdapter
+}
+
+export function makeConnectionAdminHandlers(dbcliPath: string, deps: AdminDeps = {}) {
+  const createAdapter = deps.createAdapter ?? ((opts) => AdapterFactory.createSqlAdapter(opts))
   const ok = (body: unknown = { ok: true }) => json(body)
   const fail = (err: unknown) => {
     const body = toErrorBody(err)
@@ -98,6 +104,21 @@ export function makeConnectionAdminHandlers(dbcliPath: string) {
       } catch (err) { return fail(err) }
     },
 
-    test: undefined as never, // Task 3
+    async test(req: Request): Promise<Response> {
+      const p = TestConnectionBody.safeParse(await req.json().catch(() => null))
+      if (!p.success) return bad()
+      const adapter = createAdapter(p.data as SqlConnectionOptions)
+      const started = Date.now()
+      try {
+        await adapter.connect()
+        const ok = await adapter.testConnection()
+        if (!ok) return json({ error: { code: 'CONNECTION', message: 'ping 失敗' } }, 502)
+        return json({ ok: true, ms: Date.now() - started })
+      } catch (err) {
+        return fail(err)
+      } finally {
+        try { await adapter.disconnect() } catch { /* 已斷或從未連上 */ }
+      }
+    },
   }
 }
