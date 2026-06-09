@@ -46,3 +46,7 @@ app-icon.png
 
 # Claude Code local runtime (scheduled-task lock, etc.)
 .claude/scheduled_tasks.lock
+
+# Playwright E2E artifacts
+test-results/
+playwright-report/
