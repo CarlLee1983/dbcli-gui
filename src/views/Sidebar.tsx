@@ -62,14 +62,14 @@ export function Sidebar(props: SidebarProps) {
       <section className="min-h-0 flex-1 overflow-auto p-3">
         <h2 className="mb-2 px-1 text-xs font-semibold uppercase text-slate-400 dark:text-slate-500 tracking-wider">資料表 / 檢視表</h2>
         <div className="relative mb-3 flex items-center">
-          <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+          <Search className="absolute left-3 h-4 w-4 text-slate-400 dark:text-slate-500" />
           <input
             type="search"
             aria-label="搜尋資料表"
             value={tableQuery}
             onChange={(e) => setTableQuery(e.target.value)}
             placeholder="搜尋資料表…"
-            className="w-full rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 pl-8 pr-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-colors"
+            className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 pl-9 pr-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 focus:outline-none transition-all"
           />
         </div>
         <ul className="flex flex-col gap-0.5">
