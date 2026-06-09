@@ -7,9 +7,11 @@ export interface ErrorBody {
 /** HTTP status for each user-safe error code. Unknown codes fall back to 500. */
 const STATUS_BY_CODE: Record<string, number> = {
   BAD_REQUEST: 400,
+  NOT_FOUND: 404,
   PERMISSION: 403,
   BLACKLISTED: 403,
   NOT_OPEN: 409,
+  CONFLICT: 409,
   NOT_CONFIGURED: 501,
   CONNECTION: 502,
   INTERNAL: 500,

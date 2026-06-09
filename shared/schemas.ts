@@ -26,3 +26,28 @@ export type QueryBody = z.infer<typeof QueryBody>
 export type SchemaTreeBody = z.infer<typeof SchemaTreeBody>
 export type SchemaTableBody = z.infer<typeof SchemaTableBody>
 export type ExportBody = z.infer<typeof ExportBody>
+
+const SqlSystemEnum = z.enum(['mysql', 'postgresql', 'mariadb'])
+
+export const ConnectionInputBody = z.object({
+  name: z.string().min(1),
+  system: SqlSystemEnum,
+  host: z.string().min(1),
+  port: z.number().int().min(1).max(65535),
+  user: z.string().min(1),
+  database: z.string().min(1),
+  password: z.string().optional(),
+})
+export const ConnectionNameBody = z.object({ name: z.string().min(1) })
+export const TestConnectionBody = z.object({
+  system: SqlSystemEnum,
+  host: z.string().min(1),
+  port: z.number().int().min(1).max(65535),
+  user: z.string().min(1),
+  database: z.string().min(1),
+  password: z.string().optional(),
+})
+
+export type ConnectionInputBody = z.infer<typeof ConnectionInputBody>
+export type ConnectionNameBody = z.infer<typeof ConnectionNameBody>
+export type TestConnectionBody = z.infer<typeof TestConnectionBody>
