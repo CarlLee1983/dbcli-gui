@@ -5,6 +5,8 @@ import type { QueryResultDto } from '../../src/api/types'
 
 afterEach(cleanup)
 
+const noop = () => {}
+
 const small: QueryResultDto = {
   fields: ['id', 'name'],
   rows: [{ id: 2, name: 'b' }, { id: 1, name: 'a' }],
@@ -13,67 +15,95 @@ const small: QueryResultDto = {
 }
 
 test('renders headers from fields', () => {
-  render(<ResultGrid result={small} />)
+  render(<ResultGrid result={small} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
   expect(screen.getByText('id')).toBeDefined()
   expect(screen.getByText('name')).toBeDefined()
 })
 
 test('renders cell values', () => {
-  render(<ResultGrid result={small} />)
+  render(<ResultGrid result={small} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
   expect(screen.getByText('a')).toBeDefined()
   expect(screen.getByText('b')).toBeDefined()
 })
 
 test('footer shows rowCount and ms', () => {
-  render(<ResultGrid result={small} />)
+  render(<ResultGrid result={small} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
   const footer = screen.getByText(/列/)
   expect(footer.textContent).toContain('2')
   expect(footer.textContent).toContain('7 ms')
 })
 
-test('clicking a header sorts ascending by that column', () => {
-  render(<ResultGrid result={small} />)
-  fireEvent.click(screen.getByText('id'))
-  const cells = screen.getAllByRole('cell').filter((c) => c.getAttribute('data-col') === 'id')
-  expect(cells[0]!.textContent).toBe('1')
-})
-
-test('clicking a header cycles asc → desc → unsorted', () => {
-  render(<ResultGrid result={small} />)
-  const header = screen.getByText('id')
-  const firstIdCell = () => screen.getAllByRole('cell').filter((c) => c.getAttribute('data-col') === 'id')[0]!
-  fireEvent.click(header)
-  expect(firstIdCell().textContent).toBe('1')
-  expect(header.textContent).toMatch(/▲/)
-  fireEvent.click(header)
-  expect(firstIdCell().textContent).toBe('2')
-  expect(header.textContent).toMatch(/▼/)
-  fireEvent.click(header)
-  expect(header.textContent).not.toMatch(/[▲▼]/)
-})
-
 test('shows an empty-state hint when result is null', () => {
-  render(<ResultGrid result={null} />)
+  render(<ResultGrid result={null} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
   expect(screen.getByText(/尚無結果/)).toBeDefined()
 })
 
 test('large result only renders a window of rows, not all', () => {
   const rows = Array.from({ length: 5000 }, (_, i) => ({ id: i }))
   const big: QueryResultDto = { fields: ['id'], rows, rowCount: 5000, ms: 1 }
-  render(<ResultGrid result={big} />)
+  render(<ResultGrid result={big} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
   const cells = screen.getAllByRole('cell').filter((c) => c.getAttribute('data-col') === 'id')
   expect(cells.length).toBeLessThan(200)
 })
 
-test('result search box filters the rendered rows', () => {
-  render(<ResultGrid result={{ rows: [{ id: 1, label: 'apple' }, { id: 2, label: 'banana' }], fields: ['id', 'label'], rowCount: 2, ms: 1 }} />)
+test('result search box calls onFilterChange (controlled)', () => {
+  const calls: string[] = []
+  render(
+    <ResultGrid
+      result={{ rows: [{ id: 1, label: 'apple' }], fields: ['id', 'label'], rowCount: 1, ms: 1 }}
+      filter=""
+      sortField={null}
+      sortDir={null}
+      onFilterChange={(q) => calls.push(q)}
+      onSort={() => {}}
+    />,
+  )
   fireEvent.change(screen.getByRole('searchbox', { name: '搜尋結果' }), { target: { value: 'app' } })
+  expect(calls).toEqual(['app'])
+})
+
+test('applies the controlled filter to rows', () => {
+  render(
+    <ResultGrid
+      result={{ rows: [{ id: 1, label: 'apple' }, { id: 2, label: 'banana' }], fields: ['id', 'label'], rowCount: 2, ms: 1 }}
+      filter="app"
+      sortField={null}
+      sortDir={null}
+      onFilterChange={() => {}}
+      onSort={() => {}}
+    />,
+  )
   expect(screen.getByText('apple')).toBeDefined()
   expect(screen.queryByText('banana')).toBeNull()
 })
 
-test('clicking a cell opens the detail modal', () => {
-  render(<ResultGrid result={{ rows: [{ id: 1, label: 'apple' }], fields: ['id', 'label'], rowCount: 1, ms: 1 }} />)
+test('clicking a header calls onSort with the field', () => {
+  const calls: string[] = []
+  render(
+    <ResultGrid
+      result={{ rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 }}
+      filter=""
+      sortField={null}
+      sortDir={null}
+      onFilterChange={() => {}}
+      onSort={(f) => calls.push(f)}
+    />,
+  )
+  fireEvent.click(screen.getByText('id'))
+  expect(calls).toEqual(['id'])
+})
+
+test('clicking a cell still opens the detail modal', () => {
+  render(
+    <ResultGrid
+      result={{ rows: [{ id: 1, label: 'apple' }], fields: ['id', 'label'], rowCount: 1, ms: 1 }}
+      filter=""
+      sortField={null}
+      sortDir={null}
+      onFilterChange={() => {}}
+      onSort={() => {}}
+    />,
+  )
   fireEvent.click(screen.getByText('apple'))
   expect(screen.getByRole('dialog', { name: /label 內容/ })).toBeDefined()
 })

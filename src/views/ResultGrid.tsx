@@ -8,48 +8,42 @@ const ROW_HEIGHT = 28
 const VIEWPORT_HEIGHT = 480
 const OVERSCAN = 8
 
+export interface ResultGridProps {
+  result: QueryResultDto | null
+  filter: string
+  sortField: string | null
+  sortDir: SortDir
+  onFilterChange(filter: string): void
+  onSort(field: string, dir: SortDir): void
+}
+
 function renderCell(value: unknown): string {
   if (value === null || value === undefined) return ''
   return typeof value === 'object' ? JSON.stringify(value) : String(value)
 }
 
-export function ResultGrid({ result }: { result: QueryResultDto | null }) {
+export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange, onSort }: ResultGridProps) {
   const [scrollTop, setScrollTop] = useState(0)
-  const [sortField, setSortField] = useState<string | null>(null)
-  const [sortDir, setSortDir] = useState<SortDir>(null)
-  const [query, setQuery] = useState('')
   const [detail, setDetail] = useState<{ field: string; value: unknown; row: Record<string, unknown> } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const sorted = useMemo(() => {
     if (!result) return []
-    const filtered = filterRows(result.rows, result.fields, query)
+    const filtered = filterRows(result.rows, result.fields, filter)
     if (!sortField || !sortDir) return filtered
     return sortRows(filtered, sortField, sortDir)
-  }, [result, sortField, sortDir, query])
+  }, [result, sortField, sortDir, filter])
 
   if (!result) {
     return <div className="flex flex-1 items-center justify-center text-sm text-gray-400">尚無結果，執行查詢以查看資料</div>
   }
 
-  const range = computeVisibleRange({
-    scrollTop,
-    viewportHeight: VIEWPORT_HEIGHT,
-    rowHeight: ROW_HEIGHT,
-    rowCount: sorted.length,
-    overscan: OVERSCAN,
-  })
+  const range = computeVisibleRange({ scrollTop, viewportHeight: VIEWPORT_HEIGHT, rowHeight: ROW_HEIGHT, rowCount: sorted.length, overscan: OVERSCAN })
   const visible = sorted.slice(range.start, range.end)
 
   const onHeaderClick = (field: string) => {
-    if (field === sortField) {
-      const dir = nextSortDir(sortDir)
-      setSortDir(dir)
-      if (dir === null) setSortField(null)
-    } else {
-      setSortField(field)
-      setSortDir('asc')
-    }
+    const dir = field === sortField ? nextSortDir(sortDir) : 'asc'
+    onSort(field, dir)
     setScrollTop(0)
     scrollRef.current?.scrollTo?.({ top: 0 })
   }
@@ -60,8 +54,8 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
         <input
           type="search"
           aria-label="搜尋結果"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setScrollTop(0) }}
+          value={filter}
+          onChange={(e) => { onFilterChange(e.target.value); setScrollTop(0) }}
           placeholder="搜尋結果…"
           className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:border-gray-500 focus:outline-none"
         />
@@ -91,9 +85,7 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
             </tr>
           </thead>
           <tbody>
-            {range.topPad > 0 ? (
-              <tr style={{ height: range.topPad }}><td colSpan={result.fields.length} /></tr>
-            ) : null}
+            {range.topPad > 0 ? (<tr style={{ height: range.topPad }}><td colSpan={result.fields.length} /></tr>) : null}
             {visible.map((row, i) => (
               <tr key={range.start + i} style={{ height: ROW_HEIGHT }} className="border-b border-gray-100">
                 {result.fields.map((f) => (
@@ -111,9 +103,7 @@ export function ResultGrid({ result }: { result: QueryResultDto | null }) {
             {sorted.length === 0 ? (
               <tr><td colSpan={result.fields.length} className="py-6 text-center text-sm text-gray-400">查詢傳回 0 筆資料</td></tr>
             ) : null}
-            {range.bottomPad > 0 ? (
-              <tr style={{ height: range.bottomPad }}><td colSpan={result.fields.length} /></tr>
-            ) : null}
+            {range.bottomPad > 0 ? (<tr style={{ height: range.bottomPad }}><td colSpan={result.fields.length} /></tr>) : null}
           </tbody>
         </table>
       </div>
