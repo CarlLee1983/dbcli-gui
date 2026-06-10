@@ -1,17 +1,29 @@
-import type { QueryResultDto, TableSchemaDto } from '../api/types'
+import type { QueryResultDto, TableSchemaDto, SubTab, TriggerDto, TableInfoDto, RelationsDto } from '../api/types'
 import type { SortDir } from '../views/grid-virtual'
 import type { ApiError } from '../api/client'
 
-export interface BrowseSession {
+/** Lazy sub-tabs fetched on demand; undefined cache = not yet loaded. */
+export type LazyKey = 'triggers' | 'info' | 'relations'
+
+export interface SubTabError { code: string; message: string; status: number }
+
+export interface TableSession {
+  connectionId: string
   table: string
+  /** Structure + forward-FK source; fetched when the table tab opens. */
   schema: TableSchemaDto
-  rows: Array<Record<string, unknown>>
-  // The query used to (re)fetch these rows; replayed after a save to refresh the view.
-  // For sidebar browse it is `SELECT * FROM <table> LIMIT n`; for an edited arbitrary
-  // SELECT it is the user's original query.
-  sql: string
-  // Result column names. When set (arbitrary-SQL edit), the browser renders only this
-  // subset of columns; undefined (sidebar browse) renders the full table schema.
+  subTab: SubTab
+  // Lazy caches (undefined = not loaded yet)
+  triggers?: TriggerDto[]
+  info?: TableInfoDto
+  relations?: RelationsDto
+  // Per-sub-tab fetch errors (inline display; one failure never clobbers another)
+  cacheErrors?: Partial<Record<LazyKey, SubTabError>>
+  // Content sub-tab state — reused by TableBrowser
+  rows?: Array<Record<string, unknown>>
+  // The query that (re)fetches the content rows; replayed after a save.
+  sql?: string
+  // Result column names for an arbitrary-SQL edit; undefined = full schema browse.
   fields?: string[]
 }
 
@@ -19,8 +31,6 @@ export interface QuerySession {
   id: string
   title: string
   sql: string
-  // The SQL that produced `result`. Snapshotted on run so stage-two editing targets the
-  // table that the displayed rows actually came from, not later unsaved editor text.
   executedSql: string
   result: QueryResultDto | null
   sortField: string | null
@@ -28,7 +38,8 @@ export interface QuerySession {
   resultFilter: string
   loading: boolean
   error: ApiError | null
-  browse: BrowseSession | null
+  /** Non-null = this tab is a "table tab" (renders TableTab); null = query editor. */
+  table: TableSession | null
 }
 
 export interface TabsState {
@@ -49,7 +60,7 @@ export function emptySession(seq: number): QuerySession {
     resultFilter: '',
     loading: false,
     error: null,
-    browse: null,
+    table: null,
   }
 }
 
@@ -64,9 +75,24 @@ export type TabsAction =
   | { type: 'rename'; id: string; title: string }
   | { type: 'setActive'; id: string }
   | { type: 'patch'; id: string; patch: Partial<QuerySession> }
-  | { type: 'openBrowse'; browse: BrowseSession }
-  | { type: 'setBrowseRows'; id: string; rows: Array<Record<string, unknown>> }
+  | { type: 'openTableTab'; session: TableSession }
+  | { type: 'setTableRows'; id: string; rows: Array<Record<string, unknown>> }
+  | { type: 'setSubTab'; id: string; subTab: SubTab }
+  | { type: 'setTableCache'; id: string; key: LazyKey; value: TriggerDto[] | TableInfoDto | RelationsDto }
+  | { type: 'setSubTabError'; id: string; key: LazyKey; error: SubTabError }
   | { type: 'reset' }
+
+/** Apply a function to one session's `table` payload (no-op if it isn't a table tab). */
+function mapTable(
+  state: TabsState,
+  id: string,
+  fn: (t: TableSession) => TableSession,
+): TabsState {
+  return {
+    ...state,
+    sessions: state.sessions.map((s) => (s.id === id && s.table != null ? { ...s, table: fn(s.table) } : s)),
+  }
+}
 
 export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
   switch (action.type) {
@@ -87,8 +113,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       let activeId = state.activeId
       if (action.id === state.activeId) {
         const nextIdx = Math.min(idx, remaining.length - 1)
-        const nextSession = remaining[nextIdx]
-        activeId = nextSession!.id
+        activeId = remaining[nextIdx]!.id
       }
       return { ...state, sessions: remaining, activeId }
     }
@@ -98,22 +123,35 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       return state.sessions.some((s) => s.id === action.id) ? { ...state, activeId: action.id } : state
     case 'patch':
       return { ...state, sessions: state.sessions.map((s) => (s.id === action.id ? { ...s, ...action.patch } : s)) }
-    case 'openBrowse': {
+    case 'openTableTab': {
+      // Dedupe: same table on same connection → focus it + switch sub-tab, don't reopen.
+      const existing = state.sessions.find(
+        (s) => s.table?.table === action.session.table && s.table?.connectionId === action.session.connectionId,
+      )
+      if (existing) {
+        return {
+          ...state,
+          activeId: existing.id,
+          sessions: state.sessions.map((s) =>
+            s.id === existing.id && s.table != null
+              ? { ...s, table: { ...s.table, subTab: action.session.subTab, ...contentPatch(action.session) } }
+              : s,
+          ),
+        }
+      }
       const seq = state.seq + 1
-      const s: QuerySession = { ...emptySession(seq), title: action.browse.table, browse: action.browse }
+      const s: QuerySession = { ...emptySession(seq), title: action.session.table, table: action.session }
       return { sessions: [...state.sessions, s], activeId: s.id, seq }
     }
-    case 'setBrowseRows':
-      return {
-        ...state,
-        sessions: state.sessions.map((s) =>
-          s.id === action.id && s.browse != null
-            ? { ...s, browse: { ...s.browse, rows: action.rows } }
-            : s
-        ),
-      }
+    case 'setTableRows':
+      return mapTable(state, action.id, (t) => ({ ...t, rows: action.rows }))
+    case 'setSubTab':
+      return mapTable(state, action.id, (t) => ({ ...t, subTab: action.subTab }))
+    case 'setTableCache':
+      return mapTable(state, action.id, (t) => ({ ...t, [action.key]: action.value }))
+    case 'setSubTabError':
+      return mapTable(state, action.id, (t) => ({ ...t, cacheErrors: { ...t.cacheErrors, [action.key]: action.error } }))
     case 'reset': {
-      // 與 close-到-空 一致:延續 seq 避免分頁 id 回收重複。
       const seq = state.seq + 1
       const s = emptySession(seq)
       return { sessions: [s], activeId: s.id, seq }
@@ -121,4 +159,13 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
     default:
       return state
   }
+}
+
+/** When re-focusing an existing table tab with content payload (edit flow), carry rows/sql/fields. */
+function contentPatch(next: TableSession): Partial<TableSession> {
+  const patch: Partial<TableSession> = {}
+  if (next.rows !== undefined) patch.rows = next.rows
+  if (next.sql !== undefined) patch.sql = next.sql
+  if (next.fields !== undefined) patch.fields = next.fields
+  return patch
 }
