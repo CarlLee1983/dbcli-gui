@@ -12,6 +12,9 @@ function fakeClient(over: Partial<DbClient> = {}): DbClient {
     query: async () => ({ rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 2 }),
     schemaTree: async () => ({ tables: [{ name: 't', type: 'table' }] }),
     schemaTable: async () => ({ name: 't', columns: [] }),
+    tableTriggers: async () => [],
+    tableInfo: async () => ({ engine: 'InnoDB', rowCount: 0, sizeBytes: 0, collation: null, createdAt: null, createSql: null }),
+    tableRelations: async () => ({ forward: [], reverse: [] }),
     exportRows: async () => {},
     createConnection: async () => ({ ok: true }),
     updateConnection: async () => ({ ok: true }),
@@ -49,19 +52,59 @@ test('exportResult forwards active connection + active sql + format', async () =
   expect(calls).toEqual([['a', 'SELECT 1', 'csv']])
 })
 
-test('browseTable calls schemaTable + query and opens a browse tab', async () => {
+test('openTableTab(structure) calls schemaTable and opens a table tab (no query)', async () => {
   const schemaTableCalls: string[] = []
   const queryCalls: string[] = []
   const { result } = renderHook(() => useApp(fakeClient({
-    schemaTable: async (id, table) => { schemaTableCalls.push(table); return { name: table, columns: [] } },
-    query: async (id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 2 } },
+    schemaTable: async (_id, table) => { schemaTableCalls.push(table); return { name: table, columns: [] } },
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 2 } },
   })))
   await waitFor(() => expect(result.current.connections.online).toBe(true))
   await act(async () => { await result.current.connections.selectConnection('a') })
-  await act(async () => { await result.current.browseTable('orders') })
+  await act(async () => { await result.current.openTableTab('orders', 'structure') })
   expect(schemaTableCalls).toContain('orders')
+  expect(queryCalls).toHaveLength(0)
+  expect(result.current.tabs.active.table?.table).toBe('orders')
+  expect(result.current.tabs.active.table?.subTab).toBe('structure')
+})
+
+test('openTableTab(content) fetches rows for the browser', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 2 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
   expect(queryCalls.some((sql) => sql.includes('orders'))).toBe(true)
-  expect(result.current.tabs.active.browse?.table).toBe('orders')
+  expect(result.current.tabs.active.table?.rows).toEqual([{ id: 1 }])
+})
+
+test('loadSubTab caches triggers and is a no-op on second call', async () => {
+  let calls = 0
+  const { result } = renderHook(() => useApp(fakeClient({
+    tableTriggers: async () => { calls++; return [{ name: 't', timing: 'AFTER', event: 'INSERT', statement: '' }] },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'structure') })
+  const id = result.current.tabs.activeId
+  await act(async () => { await result.current.loadSubTab(id, 'triggers') })
+  await act(async () => { await result.current.loadSubTab(id, 'triggers') })
+  expect(calls).toBe(1)
+  expect(result.current.tabs.active.table?.triggers).toHaveLength(1)
+})
+
+test('loadSubTab stores a per-sub-tab error on failure', async () => {
+  const { result } = renderHook(() => useApp(fakeClient({
+    tableInfo: async () => { throw new Error('boom') },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'structure') })
+  const id = result.current.tabs.activeId
+  await act(async () => { await result.current.loadSubTab(id, 'info') })
+  expect(result.current.tabs.active.table?.cacheErrors?.info).toBeTruthy()
 })
 
 test('saveTableEdits on success calls mutate + query and returns true', async () => {
@@ -74,8 +117,8 @@ test('saveTableEdits on success calls mutate + query and returns true', async ()
   })))
   await waitFor(() => expect(result.current.connections.online).toBe(true))
   await act(async () => { await result.current.connections.selectConnection('a') })
-  // Open a browse tab first so saveTableEdits has a tab to update
-  await act(async () => { await result.current.browseTable('orders') })
+  // Open a table tab first so saveTableEdits has a tab to update
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
   let ok = false
   await act(async () => { ok = await result.current.saveTableEdits('orders', ops) })
   expect(ok).toBe(true)
@@ -90,7 +133,7 @@ test('saveTableEdits returns false and sets error when mutate rejects', async ()
   })))
   await waitFor(() => expect(result.current.connections.online).toBe(true))
   await act(async () => { await result.current.connections.selectConnection('a') })
-  await act(async () => { await result.current.browseTable('orders') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
   let ok = true
   await act(async () => { ok = await result.current.saveTableEdits('orders', ops) })
   expect(ok).toBe(false)
@@ -108,9 +151,9 @@ test('editQueryResult opens an editable browse tab bound to the original SQL', a
   act(() => { result.current.tabs.setSql('SELECT id, name FROM users WHERE id < 5') })
   await act(async () => { await result.current.tabs.runQuery() })
   await act(async () => { await result.current.editQueryResult() })
-  expect(result.current.tabs.active.browse?.table).toBe('users')
-  expect(result.current.tabs.active.browse?.sql).toBe('SELECT id, name FROM users WHERE id < 5')
-  expect(result.current.tabs.active.browse?.fields).toEqual(['id', 'name'])
+  expect(result.current.tabs.active.table?.table).toBe('users')
+  expect(result.current.tabs.active.table?.sql).toBe('SELECT id, name FROM users WHERE id < 5')
+  expect(result.current.tabs.active.table?.fields).toEqual(['id', 'name'])
 })
 
 test('editQueryResult sets an error and opens no browse tab when result is not editable', async () => {
@@ -124,7 +167,7 @@ test('editQueryResult sets an error and opens no browse tab when result is not e
   act(() => { result.current.tabs.setSql('SELECT name FROM users') })
   await act(async () => { await result.current.tabs.runQuery() })
   await act(async () => { await result.current.editQueryResult() })
-  expect(result.current.tabs.active.browse).toBeNull()
+  expect(result.current.tabs.active.table).toBeNull()
   expect(result.current.connections.error).not.toBeNull()
 })
 
@@ -145,8 +188,8 @@ test('editQueryResult uses the executed SQL, not later unsaved editor text', asy
   act(() => { result.current.tabs.setSql('SELECT * FROM accounts') })
   await act(async () => { await result.current.editQueryResult() })
   expect(schemaTableCalls).toEqual(['users'])
-  expect(result.current.tabs.active.browse?.table).toBe('users')
-  expect(result.current.tabs.active.browse?.sql).toBe('SELECT * FROM users')
+  expect(result.current.tabs.active.table?.table).toBe('users')
+  expect(result.current.tabs.active.table?.sql).toBe('SELECT * FROM users')
 })
 
 test('editQueryResult is a no-op when the active SQL is not a single-table SELECT', async () => {
@@ -160,7 +203,7 @@ test('editQueryResult is a no-op when the active SQL is not a single-table SELEC
   await act(async () => { await result.current.tabs.runQuery() })
   await act(async () => { await result.current.editQueryResult() })
   expect(schemaTableCalls).toHaveLength(0)
-  expect(result.current.tabs.active.browse).toBeNull()
+  expect(result.current.tabs.active.table).toBeNull()
 })
 
 test('switchWorkspace:套用新連線清單並重置查詢分頁', async () => {
@@ -242,4 +285,19 @@ test('saveTableEdits refetches using the browse session stored SQL', async () =>
   queryCalls.length = 0
   await act(async () => { await result.current.saveTableEdits('users', { updates: [], inserts: [], deletes: [] }) })
   expect(queryCalls).toEqual(['SELECT id, name FROM users WHERE id < 5'])
+})
+
+test('loadSubTab dedupes concurrent in-flight fetches', async () => {
+  let calls = 0
+  const { result } = renderHook(() => useApp(fakeClient({
+    tableTriggers: async () => { calls++; await Promise.resolve(); return [] },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'structure') })
+  const id = result.current.tabs.activeId
+  await act(async () => {
+    await Promise.all([result.current.loadSubTab(id, 'triggers'), result.current.loadSubTab(id, 'triggers')])
+  })
+  expect(calls).toBe(1)
 })

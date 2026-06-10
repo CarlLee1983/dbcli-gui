@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { client as defaultClient, ApiError, type DbClient } from '../api/client'
-import type { ConnectionSummary, TreeTable, TableColumnDto, ConnectionFormInput, ConnectionDetail, TestResult, Permission } from '../api/types'
+import type { ConnectionSummary, TreeTable, ConnectionFormInput, ConnectionDetail, TestResult, Permission } from '../api/types'
 
 const INTERNAL_STATUS = 0 // no HTTP response (client-side / wrapped error)
 export const toApiError = (err: unknown): ApiError =>
@@ -11,12 +11,10 @@ export interface ConnectionsApi {
   connections: ConnectionSummary[]
   activeConnectionId: string | null
   tree: TreeTable[]
-  expandedColumns: Record<string, TableColumnDto[]>
   error: ApiError | null
   client: DbClient
   permission: Permission | null
   selectConnection(id: string): Promise<void>
-  loadTableColumns(table: string): Promise<void>
   refreshConnections(): Promise<void>
   setError(err: ApiError | null): void
   dismissError(): void
@@ -40,7 +38,6 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
   const [connections, setConnections] = useState<ConnectionSummary[]>([])
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null)
   const [tree, setTree] = useState<TreeTable[]>([])
-  const [expandedColumns, setExpandedColumns] = useState<Record<string, TableColumnDto[]>>({})
   const [error, setError] = useState<ApiError | null>(null)
   const [permission, setPermission] = useState<Permission | null>(null)
 
@@ -76,23 +73,11 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
       const { tables } = await clientRef.current.schemaTree(id)
       setActiveConnectionId(id)
       setPermission(opened.permission)
-      setExpandedColumns({})
       setTree(tables)
     } catch (err) {
       setError(toApiError(err))
     }
   }, [])
-
-  const loadTableColumns = useCallback(async (table: string) => {
-    const connId = activeConnectionId
-    if (!connId) return
-    try {
-      const schema = await clientRef.current.schemaTable(connId, table)
-      setExpandedColumns((prev) => ({ ...prev, [table]: schema.columns }))
-    } catch (err) {
-      setError(toApiError(err))
-    }
-  }, [activeConnectionId])
 
   const dismissError = useCallback(() => setError(null), [])
 
@@ -138,7 +123,6 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
     setConnections(next)
     setActiveConnectionId(null)
     setTree([])
-    setExpandedColumns({})
     setPermission(null)
     setError(null)
   }, [])
@@ -148,12 +132,10 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
     connections,
     activeConnectionId,
     tree,
-    expandedColumns,
     error,
     client: clientRef.current,
     permission,
     selectConnection,
-    loadTableColumns,
     refreshConnections,
     setError,
     dismissError,

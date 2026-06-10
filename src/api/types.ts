@@ -75,3 +75,34 @@ export interface Workspace {
   kind: 'global' | 'project'
   path: string
 }
+
+export type SubTab = 'structure' | 'content' | 'relations' | 'triggers' | 'info'
+
+export interface TriggerDto {
+  name: string
+  timing: string
+  event: string
+  statement: string
+}
+
+export interface TableInfoDto {
+  engine: string | null
+  rowCount: number | null
+  sizeBytes: number | null
+  collation: string | null
+  createdAt: string | null
+  createSql: string | null
+}
+
+export interface RelationRef {
+  fromTable: string
+  fromColumn: string
+  toTable: string
+  toColumn: string
+  constraintName?: string
+}
+
+export interface RelationsDto {
+  forward: RelationRef[]
+  reverse: RelationRef[]
+}

@@ -40,7 +40,19 @@ export function fixtureAdapter(tables: SeedTable[]): DatabaseAdapter {
         // optimistic-concurrency check passes and the transaction commits.
         return { rows: [], affectedRows: 1 } as ExecutionResult<T>
       }
-      // SELECT (and BEGIN/COMMIT/ROLLBACK, which match no table) → seed rows / none.
+      if (sql.includes('information_schema.TRIGGERS') || sql.includes('information_schema.triggers')) {
+        return { rows: [{ name: 'trg_demo', timing: 'AFTER', event: 'INSERT', statement: 'BEGIN END' }] as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
+      }
+      if (sql.includes('KEY_COLUMN_USAGE') || sql.includes('constraint_column_usage')) {
+        return { rows: [{ fromTable: 'order_items', fromColumn: 'order_id', toColumn: 'id', constraintName: 'fk_oi' }] as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
+      }
+      if (sql.startsWith('SHOW CREATE TABLE')) {
+        return { rows: [{ Table: 'orders', 'Create Table': 'CREATE TABLE `orders` (...)' }] as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
+      }
+      if (sql.includes('pg_class') || sql.includes('information_schema.TABLES')) {
+        return { rows: [{ engine: 'InnoDB', rowCount: 3, sizeBytes: 16384, collation: 'utf8mb4_general_ci', createdAt: '2024-01-01' }] as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
+      }
+      // plain SELECT → seed rows
       const t = tables.find((tb) => new RegExp(`\\b${tb.name}\\b`).test(sql))
       return { rows: (t?.rows ?? []) as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
     },

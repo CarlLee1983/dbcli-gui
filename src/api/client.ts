@@ -10,6 +10,9 @@ import type {
   MutateResult,
   Permission,
   Workspace,
+  TriggerDto,
+  TableInfoDto,
+  RelationsDto,
 } from './types'
 import { saveFile } from './save-file'
 
@@ -60,6 +63,9 @@ export interface DbClient {
   query(id: string, sql: string, limit?: number): Promise<QueryResultDto>
   schemaTree(id: string): Promise<{ tables: TreeTable[] }>
   schemaTable(id: string, table: string): Promise<TableSchemaDto>
+  tableTriggers(id: string, table: string): Promise<TriggerDto[]>
+  tableInfo(id: string, table: string): Promise<TableInfoDto>
+  tableRelations(id: string, table: string): Promise<RelationsDto>
   exportRows(id: string, sql: string, format: 'csv' | 'json'): Promise<void>
   createConnection(input: ConnectionFormInput): Promise<{ ok: boolean }>
   updateConnection(input: ConnectionFormInput): Promise<{ ok: boolean }>
@@ -114,6 +120,18 @@ export function makeClient(base: string, token: string): DbClient {
     schemaTable: async (id, table) => {
       const body = (await post('/schema/table', { connectionId: id, table })) as { table: TableSchemaDto }
       return body.table
+    },
+    tableTriggers: async (id, table) => {
+      const body = (await post('/schema/triggers', { connectionId: id, table })) as { triggers: TriggerDto[] }
+      return body.triggers
+    },
+    tableInfo: async (id, table) => {
+      const body = (await post('/schema/info', { connectionId: id, table })) as { info: TableInfoDto }
+      return body.info
+    },
+    tableRelations: async (id, table) => {
+      const body = (await post('/schema/relations', { connectionId: id, table })) as { relations: RelationsDto }
+      return body.relations
     },
     createConnection: (input) => post('/connections/create', input) as Promise<{ ok: boolean }>,
     updateConnection: (input) => post('/connections/update', input) as Promise<{ ok: boolean }>,

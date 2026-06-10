@@ -12,6 +12,9 @@ function fakeClient(over: Partial<DbClient> = {}): DbClient {
     query: async () => ({ rows: [], fields: [], rowCount: 0, ms: 1 }),
     schemaTree: async () => ({ tables: [{ name: 't', type: 'table' }] }),
     schemaTable: async () => ({ name: 't', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }] }),
+    tableTriggers: async () => [],
+    tableInfo: async () => ({ engine: null, rowCount: null, sizeBytes: null, collation: null, createdAt: null, createSql: null }),
+    tableRelations: async () => ({ forward: [], reverse: [] }),
     exportRows: async () => {},
     createConnection: async () => ({ ok: true }),
     updateConnection: async () => ({ ok: true }),
@@ -44,14 +47,6 @@ test('selectConnection opens it and loads the schema tree', async () => {
   await act(async () => { await result.current.selectConnection('a') })
   expect(result.current.activeConnectionId).toBe('a')
   expect(result.current.tree.length).toBe(1)
-})
-
-test('loadTableColumns populates expandedColumns', async () => {
-  const { result } = renderHook(() => useConnections(fakeClient()))
-  await waitFor(() => expect(result.current.online).toBe(true))
-  await act(async () => { await result.current.selectConnection('a') })
-  await act(async () => { await result.current.loadTableColumns('t') })
-  expect(result.current.expandedColumns['t']?.[0]?.name).toBe('id')
 })
 
 test('health failure marks offline', async () => {

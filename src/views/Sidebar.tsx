@@ -1,24 +1,22 @@
 import { useState } from 'react'
-import { Table2, Eye, Play, Database, KeyRound, Search, Plus, Pencil, Trash2 } from 'lucide-react'
-import type { ConnectionSummary, TreeTable, TableColumnDto } from '../api/types'
+import { Table2, Eye, Play, Database, Search, Plus, Pencil, Trash2 } from 'lucide-react'
+import type { ConnectionSummary, TreeTable } from '../api/types'
 import { filterTree } from './tree-filter'
 
 export interface SidebarProps {
   connections: ConnectionSummary[]
   activeConnectionId: string | null
   tree: TreeTable[]
-  expandedColumns: Record<string, TableColumnDto[]>
   onSelectConnection(id: string): void
-  onLoadColumns(table: string): void
   onInsertSelect(table: string): void
   onAddConnection(): void
   onEditConnection(name: string): void
   onDeleteConnection(name: string): void
-  onBrowseTable(table: string): void
+  onOpenTable(table: string, subTab: 'structure' | 'content'): void
 }
 
 export function Sidebar(props: SidebarProps) {
-  const { connections, activeConnectionId, tree, expandedColumns } = props
+  const { connections, activeConnectionId, tree } = props
   const [tableQuery, setTableQuery] = useState('')
   const visibleTree = filterTree(tree, tableQuery)
   return (
@@ -74,55 +72,36 @@ export function Sidebar(props: SidebarProps) {
           />
         </div>
         <ul className="flex flex-col gap-0.5">
-          {visibleTree.map((t) => {
-            const columns = expandedColumns[t.name]
-            return (
-              <li key={t.name}>
-                <div className="group flex items-center gap-1 rounded px-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <button
-                    type="button"
-                    onClick={() => props.onLoadColumns(t.name)}
-                    className="flex flex-1 items-center gap-2 py-1.5 text-left text-xs text-slate-700 dark:text-slate-300 cursor-pointer"
-                  >
-                    {t.type === 'view' ? <Eye className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <Table2 className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
-                    <span className="truncate font-mono">{t.name}</span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`查詢 ${t.name}`}
-                    onClick={() => props.onInsertSelect(t.name)}
-                    className="p-1 opacity-0 hover:text-blue-600 dark:hover:text-blue-400 focus:opacity-100 focus:ring-1 focus:ring-blue-400 group-hover:opacity-100 transition-all cursor-pointer rounded"
-                  >
-                    <Play className="h-3 w-3" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`編輯資料 ${t.name}`}
-                    onClick={() => props.onBrowseTable(t.name)}
-                    className="p-1 opacity-0 hover:text-blue-600 dark:hover:text-blue-400 focus:opacity-100 focus:ring-1 focus:ring-blue-400 group-hover:opacity-100 transition-all cursor-pointer rounded"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </button>
-                </div>
-                {columns ? (
-                  <ul className="ml-5 border-l border-slate-200 dark:border-slate-800 pl-2 text-[11px] text-slate-500 dark:text-slate-400 flex flex-col gap-0.5">
-                    {columns.map((col) => (
-                      <li key={col.name} className="flex items-center gap-1.5 py-0.5">
-                        {col.primaryKey ? (
-                          <KeyRound className="h-3 w-3 text-amber-500 flex-shrink-0" aria-label="主鍵" />
-                        ) : (
-                          <span className="w-3" />
-                        )}
-                        <span className="font-mono text-slate-700 dark:text-slate-300 truncate">{col.name}</span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">({col.type})</span>
-                        {col.primaryKey ? <span className="text-[9px] bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-500 border border-amber-200/50 dark:border-amber-900/50 rounded px-0.5 font-bold">PK</span> : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </li>
-            )
-          })}
+          {visibleTree.map((t) => (
+            <li key={t.name}>
+              <div className="group flex items-center gap-1 rounded px-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => props.onOpenTable(t.name, 'structure')}
+                  className="flex flex-1 items-center gap-2 py-1.5 text-left text-xs text-slate-700 dark:text-slate-300 cursor-pointer"
+                >
+                  {t.type === 'view' ? <Eye className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <Table2 className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
+                  <span className="truncate font-mono">{t.name}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`查詢 ${t.name}`}
+                  onClick={() => props.onInsertSelect(t.name)}
+                  className="p-1 opacity-0 hover:text-blue-600 dark:hover:text-blue-400 focus:opacity-100 focus:ring-1 focus:ring-blue-400 group-hover:opacity-100 transition-all cursor-pointer rounded"
+                >
+                  <Play className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`編輯資料 ${t.name}`}
+                  onClick={() => props.onOpenTable(t.name, 'content')}
+                  className="p-1 opacity-0 hover:text-blue-600 dark:hover:text-blue-400 focus:opacity-100 focus:ring-1 focus:ring-blue-400 group-hover:opacity-100 transition-all cursor-pointer rounded"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              </div>
+            </li>
+          ))}
           {visibleTree.length === 0 && (
             <p className="px-2 py-4 text-center text-xs text-slate-400 dark:text-slate-500">找不到相符的資料表</p>
           )}

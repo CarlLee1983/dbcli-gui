@@ -1,11 +1,12 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { client as defaultClient, ApiError, type DbClient } from '../api/client'
 import { useConnections, toApiError, type ConnectionsApi } from './useConnections'
 import { useHistory, type HistoryApi } from './useHistory'
 import { useTabs, type TabsApi } from './useTabs'
 import { useWorkspaces, type WorkspacesApi } from './useWorkspaces'
 import { detectSingleTable, resultIsEditable } from './single-table'
-import type { MutateOps } from '../api/types'
+import type { MutateOps, SubTab } from '../api/types'
+import type { LazyKey } from './tabs-reducer'
 
 export interface AppApi {
   connections: ConnectionsApi
@@ -14,7 +15,8 @@ export interface AppApi {
   workspaces: WorkspacesApi
   saving: boolean
   exportResult(format: 'csv' | 'json'): Promise<void>
-  browseTable(table: string): Promise<void>
+  openTableTab(table: string, subTab?: SubTab): Promise<void>
+  loadSubTab(tabId: string, key: LazyKey): Promise<void>
   saveTableEdits(table: string, ops: MutateOps): Promise<boolean>
   editQueryResult(): Promise<void>
   switchWorkspace(id: string): Promise<void>
@@ -27,6 +29,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
   const tabs = useTabs({ client: connections.client, activeConnectionId: connections.activeConnectionId, onRecord: history.add })
   const workspaces = useWorkspaces(connections.client)
   const [saving, setSaving] = useState(false)
+  const inFlight = useRef<Set<string>>(new Set())
 
   const exportResult = useCallback(async (format: 'csv' | 'json') => {
     const connId = connections.activeConnectionId
@@ -39,20 +42,47 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [connections, tabs.active.sql])
 
-  const browseTable = useCallback(async (table: string) => {
+  const openTableTab = useCallback(async (table: string, subTab: SubTab = 'structure') => {
     const connId = connections.activeConnectionId
     if (!connId) return
     try {
       const schema = await connections.client.schemaTable(connId, table)
       // `table` is a server-enumerated identifier from the schema tree (not free user input).
-      // TODO(stage-two): quote the identifier to support reserved-word / special-char table names.
+      // LIMIT 200 mirrors the existing sidebar browse default (more rows to edit); the
+      // "以此表開新查詢" button deliberately uses LIMIT 100, matching the insert-select default.
       const sql = `SELECT * FROM ${table} LIMIT 200`
-      const result = await connections.client.query(connId, sql)
-      tabs.openBrowse({ table, schema, rows: result.rows, sql })
+      // Content sub-tab needs rows up front so the browser renders immediately.
+      const rows = subTab === 'content' ? (await connections.client.query(connId, sql)).rows : undefined
+      tabs.openTableTab({ connectionId: connId, table, schema, subTab, sql, rows })
     } catch (err) {
       connections.setError(toApiError(err))
     }
-  }, [connections, tabs.openBrowse])
+  }, [connections, tabs.openTableTab])
+
+  // Lazy-load a sub-tab's data the first time it is shown. Errors are scoped to the
+  // sub-tab (stored on the session) so one failure never blanks the others.
+  const loadSubTab = useCallback(async (tabId: string, key: LazyKey) => {
+    const connId = connections.activeConnectionId
+    const session = tabs.getSession(tabId)
+    const t = session?.table
+    if (!connId || !t) return
+    if (t[key] !== undefined) return // cache hit; a prior error leaves t[key] undefined → revisiting retries
+    const flightKey = `${tabId}:${key}`
+    if (inFlight.current.has(flightKey)) return // a fetch for this sub-tab is already running
+    inFlight.current.add(flightKey)
+    try {
+      const value =
+        key === 'triggers' ? await connections.client.tableTriggers(connId, t.table)
+        : key === 'info' ? await connections.client.tableInfo(connId, t.table)
+        : await connections.client.tableRelations(connId, t.table)
+      tabs.setTableCache(tabId, key, value)
+    } catch (err) {
+      const e = toApiError(err)
+      tabs.setSubTabError(tabId, key, { code: e.code, message: e.message, status: e.status })
+    } finally {
+      inFlight.current.delete(flightKey)
+    }
+  }, [connections, tabs.getSession, tabs.setTableCache, tabs.setSubTabError])
 
   // Stage two: open the active arbitrary-SQL result for editing when it is a plain
   // single-table SELECT whose primary key is projected. The structural detection is
@@ -73,11 +103,11 @@ export function useApp(client: DbClient = defaultClient): AppApi {
         connections.setError(new ApiError('NOT_EDITABLE', '此查詢結果無法編輯:需為含主鍵的單表 SELECT,且主鍵欄位在結果中。', 400))
         return
       }
-      tabs.openBrowse({ table, schema, rows: result.rows, sql, fields: result.fields })
+      tabs.openTableTab({ connectionId: connId, table, schema, subTab: 'content', rows: result.rows, sql, fields: result.fields })
     } catch (err) {
       connections.setError(toApiError(err))
     }
-  }, [connections, tabs.active, tabs.openBrowse])
+  }, [connections, tabs.active, tabs.openTableTab])
 
   const saveTableEdits = useCallback(async (table: string, ops: MutateOps): Promise<boolean> => {
     const connId = connections.activeConnectionId
@@ -85,12 +115,12 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     const tabId = tabs.activeId
     // Replay the session's own fetch query so an edited arbitrary SELECT refreshes the
     // same filtered view rather than a full-table scan.
-    const refetchSql = tabs.active.browse?.sql ?? `SELECT * FROM ${table} LIMIT 200`
+    const refetchSql = tabs.active.table?.sql ?? `SELECT * FROM ${table} LIMIT 200`
     setSaving(true)
     try {
       await connections.client.mutate(connId, table, ops)
       const result = await connections.client.query(connId, refetchSql)
-      tabs.setBrowseRows(tabId, result.rows)
+      tabs.setTableRows(tabId, result.rows)
       return true
     } catch (err) {
       connections.setError(toApiError(err))
@@ -98,7 +128,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     } finally {
       setSaving(false)
     }
-  }, [connections, tabs.activeId, tabs.active.browse, tabs.setBrowseRows])
+  }, [connections, tabs.activeId, tabs.active.table, tabs.setTableRows])
 
   const switchWorkspace = useCallback(async (id: string) => {
     try {
@@ -120,5 +150,5 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [workspaces, connections, tabs])
 
-  return { connections, history, tabs, workspaces, saving, exportResult, browseTable, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
+  return { connections, history, tabs, workspaces, saving, exportResult, openTableTab, loadSubTab, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
 }

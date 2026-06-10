@@ -8,7 +8,7 @@ import { ResultGrid } from './views/ResultGrid'
 import { TabBar } from './views/TabBar'
 import { HistoryPanel } from './views/HistoryPanel'
 import { ConnectionFormModal } from './components/ConnectionFormModal'
-import { TableBrowser } from './views/TableBrowser'
+import { TableTab } from './views/TableTab'
 import { WorkspaceSwitcher } from './views/WorkspaceSwitcher'
 import { detectSingleTable } from './hooks/single-table'
 import type { ConnectionDetail } from './api/types'
@@ -203,14 +203,12 @@ export function App() {
             connections={conn.connections}
             activeConnectionId={conn.activeConnectionId}
             tree={conn.tree}
-            expandedColumns={conn.expandedColumns}
             onSelectConnection={conn.selectConnection}
-            onLoadColumns={conn.loadTableColumns}
             onInsertSelect={(t) => tabs.loadSql(`SELECT * FROM ${t} LIMIT 100`)}
             onAddConnection={() => setConnModal({ mode: 'create' })}
             onEditConnection={openEdit}
             onDeleteConnection={removeConn}
-            onBrowseTable={app.browseTable}
+            onOpenTable={app.openTableTab}
           />
         </div>
 
@@ -249,16 +247,16 @@ export function App() {
           />
           <ErrorBanner error={active.error} onDismiss={tabs.dismissError} />
 
-          {active.browse ? (
+          {active.table ? (
             <div className="flex-1 min-h-0">
-              <TableBrowser
-                table={active.browse.table}
-                schema={active.browse.schema}
-                rows={active.browse.rows}
-                columns={active.browse.fields}
+              <TableTab
+                session={active.table}
                 permission={conn.permission ?? 'query-only'}
                 saving={app.saving}
-                onSave={(ops) => app.saveTableEdits(active.browse!.table, ops)}
+                onSetSubTab={(s) => tabs.setSubTab(tabs.activeId, s)}
+                onLoadSubTab={(k) => app.loadSubTab(tabs.activeId, k)}
+                onOpenQuery={(sql) => tabs.openQuery(sql)}
+                onSave={(ops) => app.saveTableEdits(active.table!.table, ops)}
               />
             </div>
           ) : (
