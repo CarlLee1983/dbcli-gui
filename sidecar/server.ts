@@ -11,6 +11,7 @@ import { makeSchemaHandlers } from './routes/schema'
 import { makeExportHandler } from './routes/export'
 import { makeConnectionAdminHandlers } from './routes/connections-admin'
 import { makeDataHandlers } from './routes/data'
+import { makeTableDetailHandlers } from './routes/table-detail'
 import { makeWorkspaceHandlers } from './routes/workspaces'
 import { buildStoreRuntime, type ActiveStore } from './active-store'
 import type { WorkspaceRegistry } from './workspaces'
@@ -72,6 +73,7 @@ export function createServer(deps: ServerDeps): Server<unknown> {
     const schema = makeSchemaHandlers(store.pool)
     const admin = makeConnectionAdminHandlers(store.dbcliPath)
     const data = makeDataHandlers(store.pool)
+    const detail = makeTableDetailHandlers(store.pool)
     const ws = deps.registry ? makeWorkspaceHandlers(deps.registry, store, selectWorkspace) : null
     return {
       '/health': { GET: withCors(() => json({ ok: true, version: pkg.version })), OPTIONS: corsPreflight },
@@ -81,6 +83,9 @@ export function createServer(deps: ServerDeps): Server<unknown> {
       '/query': post(makeQueryHandler(store.pool)),
       '/schema/tree': post(schema.tree),
       '/schema/table': post(schema.table),
+      '/schema/triggers': post(detail.triggers),
+      '/schema/info': post(detail.info),
+      '/schema/relations': post(detail.relations),
       '/export': post(makeExportHandler(store.pool)),
       '/data/mutate': post(data.mutate),
       '/connections/create': post(admin.create),
