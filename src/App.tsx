@@ -8,6 +8,7 @@ import { ResultGrid } from './views/ResultGrid'
 import { TabBar } from './views/TabBar'
 import { HistoryPanel } from './views/HistoryPanel'
 import { ConnectionFormModal } from './components/ConnectionFormModal'
+import { TableBrowser } from './views/TableBrowser'
 import type { ConnectionDetail } from './api/types'
 
 export function App() {
@@ -194,6 +195,7 @@ export function App() {
             onAddConnection={() => setConnModal({ mode: 'create' })}
             onEditConnection={openEdit}
             onDeleteConnection={removeConn}
+            onBrowseTable={app.browseTable}
           />
         </div>
 
@@ -231,36 +233,51 @@ export function App() {
             onRename={tabs.renameTab}
           />
           <ErrorBanner error={active.error} onDismiss={tabs.dismissError} />
-          
-          {/* Query Editor Container */}
-          <div style={{ height: editorHeight }} className="flex flex-col flex-shrink-0 min-h-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4">
-            <Editor
-              sql={active.sql}
-              loading={active.loading}
-              hasResult={!!active.result}
-              onChange={tabs.setSql}
-              onRun={tabs.runQuery}
-              onExport={app.exportResult}
-            />
-          </div>
 
-          {/* Vertical Resizer Handle */}
-          <div
-            onMouseDown={startResize('editor')}
-            className={`h-1 w-full cursor-row-resize hover:bg-blue-500 dark:hover:bg-blue-500 transition-colors flex-shrink-0 relative z-20 ${activeResizer === 'editor' ? 'bg-blue-500' : 'bg-slate-200 dark:bg-slate-800'}`}
-          />
+          {active.browse ? (
+            <div className="flex-1 min-h-0">
+              <TableBrowser
+                table={active.browse.table}
+                schema={active.browse.schema}
+                rows={active.browse.rows}
+                permission={conn.permission ?? 'query-only'}
+                saving={app.saving}
+                onSave={(ops) => app.saveTableEdits(active.browse!.table, ops)}
+              />
+            </div>
+          ) : (
+            <>
+              {/* Query Editor Container */}
+              <div style={{ height: editorHeight }} className="flex flex-col flex-shrink-0 min-h-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4">
+                <Editor
+                  sql={active.sql}
+                  loading={active.loading}
+                  hasResult={!!active.result}
+                  onChange={tabs.setSql}
+                  onRun={tabs.runQuery}
+                  onExport={app.exportResult}
+                />
+              </div>
 
-          {/* Result Grid Container */}
-          <div className="flex-1 min-h-0">
-            <ResultGrid
-              result={active.result}
-              filter={active.resultFilter}
-              sortField={active.sortField}
-              sortDir={active.sortDir}
-              onFilterChange={tabs.setResultFilter}
-              onSort={tabs.setSort}
-            />
-          </div>
+              {/* Vertical Resizer Handle */}
+              <div
+                onMouseDown={startResize('editor')}
+                className={`h-1 w-full cursor-row-resize hover:bg-blue-500 dark:hover:bg-blue-500 transition-colors flex-shrink-0 relative z-20 ${activeResizer === 'editor' ? 'bg-blue-500' : 'bg-slate-200 dark:bg-slate-800'}`}
+              />
+
+              {/* Result Grid Container */}
+              <div className="flex-1 min-h-0">
+                <ResultGrid
+                  result={active.result}
+                  filter={active.resultFilter}
+                  sortField={active.sortField}
+                  sortDir={active.sortDir}
+                  onFilterChange={tabs.setResultFilter}
+                  onSort={tabs.setSort}
+                />
+              </div>
+            </>
+          )}
         </main>
 
         {/* Right Resizer Drag Handle */}

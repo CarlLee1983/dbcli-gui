@@ -1,6 +1,12 @@
-import type { QueryResultDto } from '../api/types'
+import type { QueryResultDto, TableSchemaDto } from '../api/types'
 import type { SortDir } from '../views/grid-virtual'
 import type { ApiError } from '../api/client'
+
+export interface BrowseSession {
+  table: string
+  schema: TableSchemaDto
+  rows: Array<Record<string, unknown>>
+}
 
 export interface QuerySession {
   id: string
@@ -12,6 +18,7 @@ export interface QuerySession {
   resultFilter: string
   loading: boolean
   error: ApiError | null
+  browse: BrowseSession | null
 }
 
 export interface TabsState {
@@ -31,6 +38,7 @@ export function emptySession(seq: number): QuerySession {
     resultFilter: '',
     loading: false,
     error: null,
+    browse: null,
   }
 }
 
@@ -45,6 +53,8 @@ export type TabsAction =
   | { type: 'rename'; id: string; title: string }
   | { type: 'setActive'; id: string }
   | { type: 'patch'; id: string; patch: Partial<QuerySession> }
+  | { type: 'openBrowse'; browse: BrowseSession }
+  | { type: 'setBrowseRows'; id: string; rows: Array<Record<string, unknown>> }
 
 export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
   switch (action.type) {
@@ -76,6 +86,20 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       return state.sessions.some((s) => s.id === action.id) ? { ...state, activeId: action.id } : state
     case 'patch':
       return { ...state, sessions: state.sessions.map((s) => (s.id === action.id ? { ...s, ...action.patch } : s)) }
+    case 'openBrowse': {
+      const seq = state.seq + 1
+      const s: QuerySession = { ...emptySession(seq), title: action.browse.table, browse: action.browse }
+      return { sessions: [...state.sessions, s], activeId: s.id, seq }
+    }
+    case 'setBrowseRows':
+      return {
+        ...state,
+        sessions: state.sessions.map((s) =>
+          s.id === action.id && s.browse != null
+            ? { ...s, browse: { ...s.browse, rows: action.rows } }
+            : s
+        ),
+      }
     default:
       return state
   }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { client as defaultClient, ApiError, type DbClient } from '../api/client'
-import type { ConnectionSummary, TreeTable, TableColumnDto, ConnectionFormInput, ConnectionDetail, TestResult } from '../api/types'
+import type { ConnectionSummary, TreeTable, TableColumnDto, ConnectionFormInput, ConnectionDetail, TestResult, Permission } from '../api/types'
 
 const INTERNAL_STATUS = 0 // no HTTP response (client-side / wrapped error)
 export const toApiError = (err: unknown): ApiError =>
@@ -14,6 +14,7 @@ export interface ConnectionsApi {
   expandedColumns: Record<string, TableColumnDto[]>
   error: ApiError | null
   client: DbClient
+  permission: Permission | null
   selectConnection(id: string): Promise<void>
   loadTableColumns(table: string): Promise<void>
   refreshConnections(): Promise<void>
@@ -40,6 +41,7 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
   const [tree, setTree] = useState<TreeTable[]>([])
   const [expandedColumns, setExpandedColumns] = useState<Record<string, TableColumnDto[]>>({})
   const [error, setError] = useState<ApiError | null>(null)
+  const [permission, setPermission] = useState<Permission | null>(null)
 
   const refreshConnections = useCallback(async () => {
     try {
@@ -68,9 +70,10 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
   const selectConnection = useCallback(async (id: string) => {
     setError(null)
     try {
-      await clientRef.current.openConnection(id)
+      const opened = await clientRef.current.openConnection(id)
       const { tables } = await clientRef.current.schemaTree(id)
       setActiveConnectionId(id)
+      setPermission(opened.permission)
       setExpandedColumns({})
       setTree(tables)
     } catch (err) {
@@ -137,6 +140,7 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
     expandedColumns,
     error,
     client: clientRef.current,
+    permission,
     selectConnection,
     loadTableColumns,
     refreshConnections,

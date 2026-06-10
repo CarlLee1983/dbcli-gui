@@ -27,6 +27,7 @@ function setup(over: Partial<React.ComponentProps<typeof Sidebar>> = {}) {
       onAddConnection={() => {}}
       onEditConnection={() => {}}
       onDeleteConnection={() => {}}
+      onBrowseTable={() => {}}
       {...over}
     />,
   )
@@ -86,7 +87,7 @@ test('header + button triggers onAddConnection', () => {
   render(<Sidebar connections={[{ name: 'primary', system: 'mysql', isDefault: true }]}
     activeConnectionId={null} tree={[]} expandedColumns={{}}
     onSelectConnection={() => {}} onLoadColumns={() => {}} onInsertSelect={() => {}}
-    onAddConnection={onAdd} onEditConnection={() => {}} onDeleteConnection={() => {}} />)
+    onAddConnection={onAdd} onEditConnection={() => {}} onDeleteConnection={() => {}} onBrowseTable={() => {}} />)
   fireEvent.click(screen.getByRole('button', { name: '新增連線' }))
   expect(onAdd).toHaveBeenCalledTimes(1)
 })
@@ -96,7 +97,7 @@ test('per-connection edit / delete buttons fire with the name', () => {
   render(<Sidebar connections={[{ name: 'primary', system: 'mysql', isDefault: true }]}
     activeConnectionId={null} tree={[]} expandedColumns={{}}
     onSelectConnection={() => {}} onLoadColumns={() => {}} onInsertSelect={() => {}}
-    onAddConnection={() => {}} onEditConnection={onEdit} onDeleteConnection={onDelete} />)
+    onAddConnection={() => {}} onEditConnection={onEdit} onDeleteConnection={onDelete} onBrowseTable={() => {}} />)
   fireEvent.click(screen.getByRole('button', { name: '編輯連線 primary' }))
   fireEvent.click(screen.getByRole('button', { name: '刪除連線 primary' }))
   expect(onEdit).toHaveBeenCalledWith('primary')

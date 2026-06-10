@@ -14,6 +14,7 @@ export interface SidebarProps {
   onAddConnection(): void
   onEditConnection(name: string): void
   onDeleteConnection(name: string): void
+  onBrowseTable(table: string): void
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -93,6 +94,14 @@ export function Sidebar(props: SidebarProps) {
                     className="p-1 opacity-0 hover:text-blue-600 dark:hover:text-blue-400 focus:opacity-100 focus:ring-1 focus:ring-blue-400 group-hover:opacity-100 transition-all cursor-pointer rounded"
                   >
                     <Play className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`編輯資料 ${t.name}`}
+                    onClick={() => props.onBrowseTable(t.name)}
+                    className="p-1 opacity-0 hover:text-blue-600 dark:hover:text-blue-400 focus:opacity-100 focus:ring-1 focus:ring-blue-400 group-hover:opacity-100 transition-all cursor-pointer rounded"
+                  >
+                    <Pencil className="h-3 w-3" />
                   </button>
                 </div>
                 {columns ? (

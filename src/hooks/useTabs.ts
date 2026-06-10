@@ -3,7 +3,7 @@ import { ApiError, type DbClient } from '../api/client'
 import type { SortDir } from '../views/grid-virtual'
 import { toApiError } from './useConnections'
 import type { HistoryEntry } from './useHistory'
-import { tabsReducer, initTabs, type QuerySession } from './tabs-reducer'
+import { tabsReducer, initTabs, type QuerySession, type BrowseSession } from './tabs-reducer'
 
 export interface UseTabsOpts {
   client: DbClient
@@ -25,6 +25,8 @@ export interface TabsApi {
   setResultFilter(filter: string): void
   runQuery(): Promise<void>
   dismissError(): void
+  openBrowse(browse: BrowseSession): void
+  setBrowseRows(id: string, rows: Array<Record<string, unknown>>): void
 }
 
 export function useTabs(opts: UseTabsOpts): TabsApi {
@@ -51,6 +53,8 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
   const closeTab = useCallback((id: string) => dispatch({ type: 'close', id }), [])
   const renameTab = useCallback((id: string, title: string) => dispatch({ type: 'rename', id, title }), [])
   const setActive = useCallback((id: string) => dispatch({ type: 'setActive', id }), [])
+  const openBrowse = useCallback((browse: BrowseSession) => dispatch({ type: 'openBrowse', browse }), [])
+  const setBrowseRows = useCallback((id: string, rows: Array<Record<string, unknown>>) => dispatch({ type: 'setBrowseRows', id, rows }), [])
 
   const runQuery = useCallback(async () => {
     const { client, activeConnectionId, onRecord } = optsRef.current
@@ -83,5 +87,6 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
     sessions: state.sessions, activeId: state.activeId, active,
     openTab, closeTab, renameTab, setActive,
     setSql, loadSql, setSort, setResultFilter, runQuery, dismissError,
+    openBrowse, setBrowseRows,
   }
 }
