@@ -5,7 +5,7 @@
     "": {
       "name": "dbcli-gui",
       "dependencies": {
-        "@carllee1983/dbcli": "^1.30.0",
+        "@carllee1983/dbcli": "^1.31.0",
         "@tauri-apps/api": "^2.11.0",
         "@tauri-apps/plugin-dialog": "^2.7.1",
         "lucide-react": "^1.17.0",
@@ -37,7 +37,7 @@
 
     "@babel/runtime": ["@babel/runtime@7.29.7", "", {}, "sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw=="],
 
-    "@carllee1983/dbcli": ["@carllee1983/dbcli@1.30.0", "", { "dependencies": { "cli-table3": "^0.6.5", "commander": "13.0.0", "lru-cache": "^11.4.0", "lucide-react": "^1.16.0", "mongodb": "^7.2.0", "mysql2": "^3.22.3", "node-sql-parser": "5", "open": "^11.0.0", "pg": "^8.21.0", "picocolors": "^1.1.1", "react": "^19.2.6", "react-dom": "^19.2.6", "recharts": "^3.8.1", "zod": "^3.25.76" }, "bin": { "dbcli": "dist/cli.mjs" } }, "sha512-NaCDO6PBfVVjmd3aHTrQajXYlDIpKsfKoY0VwQlB1z2Z7xJ2VhZFch9Xe9iUrySb5qI8CB57Juqit2RqhBzOYQ=="],
+    "@carllee1983/dbcli": ["@carllee1983/dbcli@1.31.0", "", { "dependencies": { "cli-table3": "^0.6.5", "commander": "13.0.0", "lru-cache": "^11.4.0", "lucide-react": "^1.16.0", "mongodb": "^7.2.0", "mysql2": "^3.22.3", "node-sql-parser": "5", "open": "^11.0.0", "pg": "^8.21.0", "picocolors": "^1.1.1", "react": "^19.2.6", "react-dom": "^19.2.6", "recharts": "^3.8.1", "zod": "^3.25.76" }, "bin": { "dbcli": "dist/cli.mjs" } }, "sha512-qpExeU02fP8N7LLC1+RWqf1TSFcz5oxRFEllPDt4+sR3k85a3HFRwzADVu++/B8V69HyML3KYUFNQM9tpY1Gzw=="],
 
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
 

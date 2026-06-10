@@ -28,7 +28,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@carllee1983/dbcli": "^1.30.0",
+    "@carllee1983/dbcli": "^1.31.0",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "lucide-react": "^1.17.0",
