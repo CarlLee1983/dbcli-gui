@@ -9,13 +9,14 @@ import { TabBar } from './views/TabBar'
 import { HistoryPanel } from './views/HistoryPanel'
 import { ConnectionFormModal } from './components/ConnectionFormModal'
 import { TableBrowser } from './views/TableBrowser'
+import { WorkspaceSwitcher } from './views/WorkspaceSwitcher'
 import { detectSingleTable } from './hooks/single-table'
 import type { ConnectionDetail } from './api/types'
 
 export function App() {
   const app = useApp()
   const [theme, setTheme] = useTheme()
-  const { connections: conn, tabs, history } = app
+  const { connections: conn, tabs, history, workspaces } = app
   const active = tabs.active
   // The single-table editability affordance is gated on the executed SQL (not live text).
   const editableTable = useMemo(
@@ -119,6 +120,14 @@ export function App() {
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-mono">{conn.activeConnectionId || '未連線'}</span>
           </div>
+          <span className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+          <WorkspaceSwitcher
+            workspaces={workspaces.workspaces}
+            activeId={workspaces.activeId}
+            onSelect={app.switchWorkspace}
+            onAdd={workspaces.add}
+            onRemove={workspaces.remove}
+          />
         </div>
 
         {/* Global Control Toolbar */}
