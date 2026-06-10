@@ -51,3 +51,17 @@ export const TestConnectionBody = z.object({
 export type ConnectionInputBody = z.infer<typeof ConnectionInputBody>
 export type ConnectionNameBody = z.infer<typeof ConnectionNameBody>
 export type TestConnectionBody = z.infer<typeof TestConnectionBody>
+
+const RowValues = z.record(z.string(), z.unknown())
+
+export const MutateBody = z.object({
+  connectionId: z.string().min(1),
+  table: z.string().min(1),
+  ops: z.object({
+    updates: z.array(z.object({ pk: RowValues, set: RowValues })).default([]),
+    inserts: z.array(z.object({ values: RowValues })).default([]),
+    deletes: z.array(z.object({ pk: RowValues })).default([]),
+  }),
+})
+
+export type MutateBody = z.infer<typeof MutateBody>
