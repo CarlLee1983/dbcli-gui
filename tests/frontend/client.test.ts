@@ -136,23 +136,84 @@ test('exportRows() triggers a download with the content-disposition filename', a
   }
 })
 
-import { test as mt, expect as me, afterEach as ma } from 'bun:test'
-import { makeClient as mkClient } from '../../src/api/client'
+// ── mutate + workspace 端點測試 ──────────────────────────────────────────────
 
-const savedFetch = globalThis.fetch
-ma(() => { globalThis.fetch = savedFetch })
-
-mt('mutate posts ops and returns applied counts', async () => {
+test('mutate posts ops and returns applied counts', async () => {
   let captured: { url: string; body: unknown } | null = null
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
     captured = { url: String(url), body: JSON.parse(String(init?.body)) }
     return new Response(JSON.stringify({ ok: true, applied: { updated: 1, inserted: 0, deleted: 0 } }), { status: 200, headers: { 'content-type': 'application/json' } })
   }) as typeof fetch
 
-  const client = mkClient('http://x', 'tok')
+  const client = makeClient('http://x', 'tok')
   const ops = { updates: [{ pk: { id: 1 }, set: { name: 'a' } }], inserts: [], deletes: [] }
   const res = await client.mutate('main', 'users', ops)
-  me(res.applied.updated).toBe(1)
-  me(captured!.url).toBe('http://x/data/mutate')
-  me(captured!.body).toEqual({ connectionId: 'main', table: 'users', ops })
+  expect(res.applied.updated).toBe(1)
+  expect(captured!.url).toBe('http://x/data/mutate')
+  expect(captured!.body).toEqual({ connectionId: 'main', table: 'users', ops })
+})
+
+test('selectWorkspace POST /workspace/select 帶 id', async () => {
+  const calls: { url: string; body: unknown }[] = []
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, body: init?.body ? JSON.parse(init.body as string) : undefined })
+    return new Response(JSON.stringify({ connections: [], activeId: 'p1' }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })
+  }) as typeof fetch
+  const client = makeClient('http://x', 'tok')
+  const res = await client.selectWorkspace('p1')
+  expect(res.activeId).toBe('p1')
+  expect(calls[0]!.url).toBe('http://x/workspace/select')
+  expect(calls[0]!.body).toEqual({ id: 'p1' })
+})
+
+test('listWorkspaces POST /workspaces/list 回傳 workspaces + activeId', async () => {
+  const ws = [{ id: 'g', label: 'Global', kind: 'global' as const, path: '/home' }]
+  const calls: { url: string }[] = []
+  globalThis.fetch = (async (url: string, _init?: RequestInit) => {
+    calls.push({ url })
+    return new Response(JSON.stringify({ workspaces: ws, activeId: 'g' }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })
+  }) as typeof fetch
+  const client = makeClient('http://x', 'tok')
+  const res = await client.listWorkspaces()
+  expect(res.activeId).toBe('g')
+  expect(res.workspaces).toEqual(ws)
+  expect(calls[0]!.url).toBe('http://x/workspaces/list')
+})
+
+test('addWorkspace POST /workspaces/add 帶 path，label 可選', async () => {
+  const calls: { url: string; body: unknown }[] = []
+  const added = { id: 'p1', label: 'My Project', kind: 'project', path: '/proj' }
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, body: init?.body ? JSON.parse(init.body as string) : undefined })
+    return new Response(JSON.stringify({ workspaces: [added], added }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })
+  }) as typeof fetch
+  const client = makeClient('http://x', 'tok')
+  // 有 label
+  await client.addWorkspace('/proj', 'My Project')
+  expect(calls[0]!.url).toBe('http://x/workspaces/add')
+  expect(calls[0]!.body).toEqual({ path: '/proj', label: 'My Project' })
+  // 無 label — body 不含 label
+  await client.addWorkspace('/proj2')
+  expect(calls[1]!.body).toEqual({ path: '/proj2' })
+})
+
+test('removeWorkspace POST /workspaces/remove 帶 id', async () => {
+  const calls: { url: string; body: unknown }[] = []
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, body: init?.body ? JSON.parse(init.body as string) : undefined })
+    return new Response(JSON.stringify({ workspaces: [], activeId: 'g' }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    })
+  }) as typeof fetch
+  const client = makeClient('http://x', 'tok')
+  const res = await client.removeWorkspace('p1')
+  expect(res.activeId).toBe('g')
+  expect(calls[0]!.url).toBe('http://x/workspaces/remove')
+  expect(calls[0]!.body).toEqual({ id: 'p1' })
 })

@@ -20,6 +20,10 @@ function fakeClient(over: Partial<DbClient> = {}): DbClient {
     testConnection: async () => ({ ok: true, ms: 0 }),
     getConnection: async () => ({ name: '', system: 'mysql', host: '', port: 0, user: '', database: '' }),
     mutate: async () => ({ ok: true, applied: { updated: 0, inserted: 0, deleted: 0 } }),
+    listWorkspaces: async () => ({ workspaces: [], activeId: 'global' }),
+    addWorkspace: async (path: string) => ({ workspaces: [], added: { id: 'x', label: 'x', kind: 'project', path } }),
+    removeWorkspace: async () => ({ workspaces: [], activeId: 'global' }),
+    selectWorkspace: async () => ({ connections: [], activeId: 'global' }),
     ...over,
   }
 }

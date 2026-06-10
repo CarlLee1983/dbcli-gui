@@ -68,3 +68,10 @@ export interface MutateResult {
   ok: boolean
   applied: { updated: number; inserted: number; deleted: number }
 }
+
+export interface Workspace {
+  id: string
+  label: string
+  kind: 'global' | 'project'
+  path: string
+}

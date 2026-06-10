@@ -9,6 +9,7 @@ import type {
   MutateOps,
   MutateResult,
   Permission,
+  Workspace,
 } from './types'
 import { saveFile } from './save-file'
 
@@ -67,6 +68,10 @@ export interface DbClient {
   testConnection(input: Omit<ConnectionFormInput, 'name'>): Promise<TestResult>
   getConnection(name: string): Promise<ConnectionDetail>
   mutate(id: string, table: string, ops: MutateOps): Promise<MutateResult>
+  listWorkspaces(): Promise<{ workspaces: Workspace[]; activeId: string }>
+  addWorkspace(path: string, label?: string): Promise<{ workspaces: Workspace[]; added: Workspace }>
+  removeWorkspace(id: string): Promise<{ workspaces: Workspace[]; activeId: string }>
+  selectWorkspace(id: string): Promise<{ connections: ConnectionSummary[]; activeId: string }>
 }
 
 export function makeClient(base: string, token: string): DbClient {
@@ -117,6 +122,10 @@ export function makeClient(base: string, token: string): DbClient {
     testConnection: (input) => post('/connections/test', input) as Promise<TestResult>,
     getConnection: (name) => get(`/connections/get?name=${encodeURIComponent(name)}`) as Promise<ConnectionDetail>,
     mutate: (id, table, ops) => post('/data/mutate', { connectionId: id, table, ops }) as Promise<MutateResult>,
+    listWorkspaces: () => post('/workspaces/list', {}) as Promise<{ workspaces: Workspace[]; activeId: string }>,
+    addWorkspace: (path, label) => post('/workspaces/add', { path, ...(label ? { label } : {}) }) as Promise<{ workspaces: Workspace[]; added: Workspace }>,
+    removeWorkspace: (id) => post('/workspaces/remove', { id }) as Promise<{ workspaces: Workspace[]; activeId: string }>,
+    selectWorkspace: (id) => post('/workspace/select', { id }) as Promise<{ connections: ConnectionSummary[]; activeId: string }>,
     exportRows: async (id, sql, format) => {
       const res = await fetch(`${base}/export`, {
         method: 'POST',
