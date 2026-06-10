@@ -3,7 +3,8 @@ import { ApiError, type DbClient } from '../api/client'
 import type { SortDir } from '../views/grid-virtual'
 import { toApiError } from './useConnections'
 import type { HistoryEntry } from './useHistory'
-import { tabsReducer, initTabs, type QuerySession, type BrowseSession } from './tabs-reducer'
+import { tabsReducer, initTabs, type QuerySession, type TableSession, type LazyKey, type SubTabError } from './tabs-reducer'
+import type { SubTab, TriggerDto, TableInfoDto, RelationsDto } from '../api/types'
 
 export interface UseTabsOpts {
   client: DbClient
@@ -15,6 +16,7 @@ export interface TabsApi {
   sessions: QuerySession[]
   activeId: string
   active: QuerySession
+  getSession(id: string): QuerySession | undefined
   openTab(): void
   closeTab(id: string): void
   renameTab(id: string, title: string): void
@@ -25,8 +27,11 @@ export interface TabsApi {
   setResultFilter(filter: string): void
   runQuery(): Promise<void>
   dismissError(): void
-  openBrowse(browse: BrowseSession): void
-  setBrowseRows(id: string, rows: Array<Record<string, unknown>>): void
+  openTableTab(session: TableSession): void
+  setTableRows(id: string, rows: Array<Record<string, unknown>>): void
+  setSubTab(id: string, subTab: SubTab): void
+  setTableCache(id: string, key: LazyKey, value: TriggerDto[] | TableInfoDto | RelationsDto): void
+  setSubTabError(id: string, key: LazyKey, error: SubTabError): void
   resetAll(): void
 }
 
@@ -50,12 +55,16 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
   const setResultFilter = useCallback((resultFilter: string) => patchActive({ resultFilter }), [patchActive])
   const dismissError = useCallback(() => patchActive({ error: null }), [patchActive])
 
+  const getSession = useCallback((id: string) => stateRef.current.sessions.find((s) => s.id === id), [])
   const openTab = useCallback(() => dispatch({ type: 'open' }), [])
   const closeTab = useCallback((id: string) => dispatch({ type: 'close', id }), [])
   const renameTab = useCallback((id: string, title: string) => dispatch({ type: 'rename', id, title }), [])
   const setActive = useCallback((id: string) => dispatch({ type: 'setActive', id }), [])
-  const openBrowse = useCallback((browse: BrowseSession) => dispatch({ type: 'openBrowse', browse }), [])
-  const setBrowseRows = useCallback((id: string, rows: Array<Record<string, unknown>>) => dispatch({ type: 'setBrowseRows', id, rows }), [])
+  const openTableTab = useCallback((session: TableSession) => dispatch({ type: 'openTableTab', session }), [])
+  const setTableRows = useCallback((id: string, rows: Array<Record<string, unknown>>) => dispatch({ type: 'setTableRows', id, rows }), [])
+  const setSubTab = useCallback((id: string, subTab: SubTab) => dispatch({ type: 'setSubTab', id, subTab }), [])
+  const setTableCache = useCallback((id: string, key: LazyKey, value: TriggerDto[] | TableInfoDto | RelationsDto) => dispatch({ type: 'setTableCache', id, key, value }), [])
+  const setSubTabError = useCallback((id: string, key: LazyKey, error: SubTabError) => dispatch({ type: 'setSubTabError', id, key, error }), [])
   const resetAll = useCallback(() => dispatch({ type: 'reset' }), [])
 
   const runQuery = useCallback(async () => {
@@ -86,9 +95,9 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
   }, [])
 
   return {
-    sessions: state.sessions, activeId: state.activeId, active,
+    sessions: state.sessions, activeId: state.activeId, active, getSession,
     openTab, closeTab, renameTab, setActive,
     setSql, loadSql, setSort, setResultFilter, runQuery, dismissError,
-    openBrowse, setBrowseRows, resetAll,
+    openTableTab, setTableRows, setSubTab, setTableCache, setSubTabError, resetAll,
   }
 }
