@@ -50,6 +50,12 @@ write SQL → result grid → export. `query-only` permission. macOS Apple Silic
 - **單表查詢結果可編輯條件**：僅限不含 JOIN / 子查詢 / UNION / GROUP BY / DISTINCT / 表別名的單表 SELECT，且該表有主鍵、主鍵欄位出現在結果欄位中（否則維持唯讀）;結果若只投影部分欄位，編輯器僅顯示這些欄位,並停用「新增列」（避免未投影的 NOT NULL 欄位無法填寫）。偵測以「執行當下的 SQL」為準,編輯器事後改寫但未重跑不會改變編輯目標。含字串常值或註解的 SQL 為保守起見可能被判為唯讀(fail-closed)。寫回 view 等非基底表的安全性由後端 `mutate`(權限/blacklist/交易)把關。
 - **範圍**：目前支援 SQL 三系統（MySQL / PostgreSQL / MariaDB）。
 
+## v2 ‧ 全域連線 + Workspace 切換
+
+- **全域為主**:預設讀全域連線庫 `~/.dbcli`(與 dbcli CLI 共用),不再綁啟動目錄。可用 `DBCLI_GUI_GLOBAL_DIR` 覆寫。
+- **標題列 workspace 切換**:下拉可在「全域」與手動加入的專案間即時切換;切換時 sidecar 關閉舊連線、用新設定庫重建連線池(`server.reload`),前端重置連線/schema/分頁狀態。
+- **手動管理清單**:「加入 workspace…」選資料夾(Tauri folder dialog),清單與上次選用記於 `~/.dbcli/workspaces.json`(原子寫),啟動還原。
+
 ## Build order
 
 1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ✓ done
