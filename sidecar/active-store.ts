@@ -12,7 +12,8 @@ export interface ActiveStore {
   id: string
   dbcliPath: string
   pool: ConnectionPool
-  lister: ConnectionLister
+  /** undefined = 沒有配置 lister,/connections/list 回 501。 */
+  lister: ConnectionLister | undefined
 }
 
 export function buildStoreRuntime(dbcliPath: string): StoreRuntime {
