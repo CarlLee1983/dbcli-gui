@@ -76,7 +76,7 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
           throw err
         }
       }
-      dispatch({ type: 'patch', id, patch: { result: res, loading: false } })
+      dispatch({ type: 'patch', id, patch: { result: res, executedSql: sql, loading: false } })
       onRecord({ sql, connectionId: connId, ts: Date.now(), rowCount: res.rowCount })
     } catch (err) {
       dispatch({ type: 'patch', id, patch: { error: toApiError(err), loading: false } })

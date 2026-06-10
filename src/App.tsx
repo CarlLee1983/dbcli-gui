@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from './hooks/useApp'
 import { useTheme } from './hooks/useTheme'
 import { ErrorBanner } from './components/ErrorBanner'
@@ -9,6 +9,7 @@ import { TabBar } from './views/TabBar'
 import { HistoryPanel } from './views/HistoryPanel'
 import { ConnectionFormModal } from './components/ConnectionFormModal'
 import { TableBrowser } from './views/TableBrowser'
+import { detectSingleTable } from './hooks/single-table'
 import type { ConnectionDetail } from './api/types'
 
 export function App() {
@@ -16,6 +17,11 @@ export function App() {
   const [theme, setTheme] = useTheme()
   const { connections: conn, tabs, history } = app
   const active = tabs.active
+  // The single-table editability affordance is gated on the executed SQL (not live text).
+  const editableTable = useMemo(
+    () => (active.result ? detectSingleTable(active.executedSql) : null),
+    [active.result, active.executedSql],
+  )
 
   // Resizable state
   const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebarWidth') || '256'))
@@ -240,6 +246,7 @@ export function App() {
                 table={active.browse.table}
                 schema={active.browse.schema}
                 rows={active.browse.rows}
+                columns={active.browse.fields}
                 permission={conn.permission ?? 'query-only'}
                 saving={app.saving}
                 onSave={(ops) => app.saveTableEdits(active.browse!.table, ops)}
@@ -264,6 +271,22 @@ export function App() {
                 onMouseDown={startResize('editor')}
                 className={`h-1 w-full cursor-row-resize hover:bg-blue-500 dark:hover:bg-blue-500 transition-colors flex-shrink-0 relative z-20 ${activeResizer === 'editor' ? 'bg-blue-500' : 'bg-slate-200 dark:bg-slate-800'}`}
               />
+
+              {/* Single-table SELECT results can be opened for editing (stage two).
+                  Detect against the executed SQL so retyping the editor without re-running
+                  cannot retarget editing to a different table. */}
+              {editableTable ? (
+                <div className="flex items-center justify-end gap-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">偵測到單表查詢</span>
+                  <button
+                    type="button"
+                    onClick={() => app.editQueryResult()}
+                    className="rounded bg-blue-600 px-2.5 py-1 text-xs text-white hover:bg-blue-500 transition-colors cursor-pointer"
+                  >
+                    編輯此結果
+                  </button>
+                </div>
+              ) : null}
 
               {/* Result Grid Container */}
               <div className="flex-1 min-h-0">

@@ -1131,15 +1131,23 @@ git commit -m "docs: [v2] README 資料編輯子系統段落"
 
 ---
 
-### Task D3(階段二,後續):任意 SQL 單表偵測開放編輯
+### Task D3(階段二,後續):任意 SQL 單表偵測開放編輯 — ✅ 已完成(2026-06-10)
 
 > **本任務為階段二跟進,非 MVP 必要。** 階段一所有任意 SQL 結果維持唯讀。
 
-- [ ] **Step 1: 設計單表偵測**
+- [x] **Step 1: 設計單表偵測**
 
 新增純函式 `detectSingleTable(sql): string | null`(只認 `SELECT ... FROM <single table>`,排除 JOIN/子查詢/別名計算欄)。偵測成功且該表有主鍵且 PK 欄在結果欄位中 → 將該結果以 `TableBrowser` 可編輯模式呈現,複用 C 階段全部機制。
 
-- [ ] **Step 2: TDD + 測試 + Commit**(沿用 C3 的純函式 TDD 模式:先寫 `detectSingleTable` 測試,再實作,再接 UI)。
+- [x] **Step 2: TDD + 測試 + Commit**(沿用 C3 的純函式 TDD 模式:先寫 `detectSingleTable` 測試,再實作,再接 UI)。
+
+**實作摘要**:
+- `src/hooks/single-table.ts` — `detectSingleTable`(結構性偵測:拒 JOIN/comma-join/子查詢/UNION/GROUP BY/DISTINCT/HAVING/CTE/別名/非 SELECT,且 FROM 僅一次)+ `resultIsEditable(schema, fields)`(有主鍵且 PK 欄全在結果 fields)。
+- `BrowseSession` 增 `sql`(重抓查詢)與 `fields`(結果欄位子集);`saveTableEdits` 改用 session 的 `sql` 重抓,不再寫死 `SELECT * … LIMIT 200`。
+- `useApp.editQueryResult()` — 點擊時抓 schema + gate,通過則以原 SQL 開可編輯 browse 分頁,失敗設 `NOT_EDITABLE` 錯誤。
+- `TableBrowser` 新增可選 `columns` prop,渲染 schema 欄位 ∩ 結果欄位(避免部分投影時的幽靈欄位)。
+- `App.tsx` 在單表查詢結果上方顯示「編輯此結果」入口。
+- 測試:`single-table.test.ts`(30)+ `useApp.test.ts`(編排 4)+ `TableBrowser.test.tsx`(欄位子集 1)+ `data-edit.e2e.ts`(階段二旅程 1)。全 262 unit pass、tsc clean、E2E pass。
 
 ---
 

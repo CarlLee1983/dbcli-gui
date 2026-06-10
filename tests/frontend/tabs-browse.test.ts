@@ -6,7 +6,7 @@ const schema: TableSchemaDto = { name: 'users', columns: [{ name: 'id', type: 'i
 
 test('openBrowse opens a new active browse tab titled after the table', () => {
   const s0 = initTabs()
-  const s1 = tabsReducer(s0, { type: 'openBrowse', browse: { table: 'users', schema, rows: [{ id: 1 }] } })
+  const s1 = tabsReducer(s0, { type: 'openBrowse', browse: { table: 'users', schema, rows: [{ id: 1 }], sql: 'SELECT * FROM users LIMIT 200' } })
   const active = s1.sessions.find((s) => s.id === s1.activeId)!
   expect(active.title).toBe('users')
   expect(active.browse?.table).toBe('users')
@@ -15,7 +15,7 @@ test('openBrowse opens a new active browse tab titled after the table', () => {
 
 test('setBrowseRows replaces rows on a browse tab', () => {
   let s = initTabs()
-  s = tabsReducer(s, { type: 'openBrowse', browse: { table: 'users', schema, rows: [{ id: 1 }] } })
+  s = tabsReducer(s, { type: 'openBrowse', browse: { table: 'users', schema, rows: [{ id: 1 }], sql: 'SELECT * FROM users LIMIT 200' } })
   const id = s.activeId
   s = tabsReducer(s, { type: 'setBrowseRows', id, rows: [{ id: 1 }, { id: 2 }] })
   const active = s.sessions.find((x) => x.id === id)!

@@ -92,3 +92,87 @@ test('saveTableEdits returns false and sets error when mutate rejects', async ()
   expect(ok).toBe(false)
   expect(result.current.connections.error).not.toBeNull()
 })
+
+test('editQueryResult opens an editable browse tab bound to the original SQL', async () => {
+  const editableSchema = { name: 'users', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }], primaryKey: ['id'] }
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async () => editableSchema,
+    query: async () => ({ rows: [{ id: 1, name: 'a' }], fields: ['id', 'name'], rowCount: 1, ms: 1 }),
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  act(() => { result.current.tabs.setSql('SELECT id, name FROM users WHERE id < 5') })
+  await act(async () => { await result.current.tabs.runQuery() })
+  await act(async () => { await result.current.editQueryResult() })
+  expect(result.current.tabs.active.browse?.table).toBe('users')
+  expect(result.current.tabs.active.browse?.sql).toBe('SELECT id, name FROM users WHERE id < 5')
+  expect(result.current.tabs.active.browse?.fields).toEqual(['id', 'name'])
+})
+
+test('editQueryResult sets an error and opens no browse tab when result is not editable', async () => {
+  // detected table 'users' but PK 'id' is absent from the projected fields
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async () => ({ name: 'users', columns: [], primaryKey: ['id'] }),
+    query: async () => ({ rows: [{ name: 'a' }], fields: ['name'], rowCount: 1, ms: 1 }),
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  act(() => { result.current.tabs.setSql('SELECT name FROM users') })
+  await act(async () => { await result.current.tabs.runQuery() })
+  await act(async () => { await result.current.editQueryResult() })
+  expect(result.current.tabs.active.browse).toBeNull()
+  expect(result.current.connections.error).not.toBeNull()
+})
+
+test('editQueryResult uses the executed SQL, not later unsaved editor text', async () => {
+  // Guards against routing edits to the wrong table: after running a query the user
+  // may retype the editor without re-running; editing must target what produced the result.
+  const editableSchema = { name: 'users', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }], primaryKey: ['id'] }
+  const schemaTableCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async (_id, table) => { schemaTableCalls.push(table); return editableSchema },
+    query: async () => ({ rows: [{ id: 1, name: 'a' }], fields: ['id', 'name'], rowCount: 1, ms: 1 }),
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  act(() => { result.current.tabs.setSql('SELECT * FROM users') })
+  await act(async () => { await result.current.tabs.runQuery() })
+  // retype the editor to a different table WITHOUT re-running
+  act(() => { result.current.tabs.setSql('SELECT * FROM accounts') })
+  await act(async () => { await result.current.editQueryResult() })
+  expect(schemaTableCalls).toEqual(['users'])
+  expect(result.current.tabs.active.browse?.table).toBe('users')
+  expect(result.current.tabs.active.browse?.sql).toBe('SELECT * FROM users')
+})
+
+test('editQueryResult is a no-op when the active SQL is not a single-table SELECT', async () => {
+  const schemaTableCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async (_id, table) => { schemaTableCalls.push(table); return { name: table, columns: [] } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  act(() => { result.current.tabs.setSql('SELECT * FROM a JOIN b ON a.id = b.id') })
+  await act(async () => { await result.current.tabs.runQuery() })
+  await act(async () => { await result.current.editQueryResult() })
+  expect(schemaTableCalls).toHaveLength(0)
+  expect(result.current.tabs.active.browse).toBeNull()
+})
+
+test('saveTableEdits refetches using the browse session stored SQL', async () => {
+  const editableSchema = { name: 'users', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }], primaryKey: ['id'] }
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async () => editableSchema,
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1, name: 'a' }], fields: ['id', 'name'], rowCount: 1, ms: 1 } },
+    mutate: async () => ({ ok: true, applied: { updated: 1, inserted: 0, deleted: 0 } }),
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  act(() => { result.current.tabs.setSql('SELECT id, name FROM users WHERE id < 5') })
+  await act(async () => { await result.current.tabs.runQuery() })
+  await act(async () => { await result.current.editQueryResult() })
+  queryCalls.length = 0
+  await act(async () => { await result.current.saveTableEdits('users', { updates: [], inserts: [], deletes: [] }) })
+  expect(queryCalls).toEqual(['SELECT id, name FROM users WHERE id < 5'])
+})

@@ -27,3 +27,27 @@ test('browse a table → edit a cell → save succeeds', async ({ page }) => {
   // no pending count banner remains
   await expect(page.getByText(/待儲存/)).toHaveCount(0)
 })
+
+test('stage two: arbitrary single-table SELECT → 編輯此結果 → edit → save', async ({ page }) => {
+  await page.goto(APP_PATH)
+
+  // open the read-write connection
+  await page.getByRole('button', { name: 'main', exact: true }).click()
+
+  // run a plain single-table SELECT
+  await page.getByLabel('SQL 查詢').fill('SELECT * FROM orders LIMIT 200')
+  await page.getByRole('button', { name: 'Run' }).click()
+
+  // detection affordance appears → open the result for editing
+  await page.getByRole('button', { name: '編輯此結果' }).click()
+
+  // editable browser opened (bound to the original query); enter edit mode
+  await page.getByRole('button', { name: '編輯', exact: true }).click()
+  await page.getByLabel('編輯 label 第 1 列').fill('edited-via-query')
+  await expect(page.getByText(/待儲存/)).toBeVisible()
+
+  // save → success clears staged edits + exits edit mode
+  await page.getByRole('button', { name: /儲存/ }).click()
+  await expect(page.getByRole('button', { name: '編輯', exact: true })).toBeVisible()
+  await expect(page.getByText(/待儲存/)).toHaveCount(0)
+})

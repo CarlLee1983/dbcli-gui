@@ -6,12 +6,22 @@ export interface BrowseSession {
   table: string
   schema: TableSchemaDto
   rows: Array<Record<string, unknown>>
+  // The query used to (re)fetch these rows; replayed after a save to refresh the view.
+  // For sidebar browse it is `SELECT * FROM <table> LIMIT n`; for an edited arbitrary
+  // SELECT it is the user's original query.
+  sql: string
+  // Result column names. When set (arbitrary-SQL edit), the browser renders only this
+  // subset of columns; undefined (sidebar browse) renders the full table schema.
+  fields?: string[]
 }
 
 export interface QuerySession {
   id: string
   title: string
   sql: string
+  // The SQL that produced `result`. Snapshotted on run so stage-two editing targets the
+  // table that the displayed rows actually came from, not later unsaved editor text.
+  executedSql: string
   result: QueryResultDto | null
   sortField: string | null
   sortDir: SortDir | null
@@ -32,6 +42,7 @@ export function emptySession(seq: number): QuerySession {
     id: `tab-${seq}`,
     title: `查詢 ${seq}`,
     sql: '',
+    executedSql: '',
     result: null,
     sortField: null,
     sortDir: null,

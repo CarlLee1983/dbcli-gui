@@ -98,6 +98,46 @@ test('failed save keeps staged edits', async () => {
   expect(container.querySelectorAll('input').length).toBeGreaterThan(0)
 })
 
+test('columns prop restricts rendered columns to the result field subset', () => {
+  const wide: TableSchemaDto = {
+    name: 'users',
+    columns: [
+      { name: 'id', type: 'int', nullable: false, primaryKey: true },
+      { name: 'name', type: 'text', nullable: true },
+      { name: 'email', type: 'text', nullable: true },
+    ],
+    primaryKey: ['id'],
+  }
+  const { container } = setup({ schema: wide, columns: ['id', 'name'] })
+  const headers = Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent)
+  expect(headers).toContain('id')
+  expect(headers).toContain('name')
+  expect(headers).not.toContain('email')
+})
+
+test('hides 新增列 when the result projects only a subset of columns', () => {
+  // A partial projection cannot supply values for unprojected NOT NULL columns, so
+  // inserting a new row would fail at the DB — disable the affordance instead.
+  const wide: TableSchemaDto = {
+    name: 'users',
+    columns: [
+      { name: 'id', type: 'int', nullable: false, primaryKey: true },
+      { name: 'name', type: 'text', nullable: true },
+      { name: 'email', type: 'text', nullable: false },
+    ],
+    primaryKey: ['id'],
+  }
+  const { getByRole, queryByRole } = setup({ schema: wide, columns: ['id', 'name'] })
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  expect(queryByRole('button', { name: '新增列' })).toBeNull()
+})
+
+test('keeps 新增列 when columns cover the full schema', () => {
+  const { getByRole } = setup({ columns: ['id', 'name'] })
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  expect(getByRole('button', { name: '新增列' })).toBeDefined()
+})
+
 test('cancel resets staged edits and exits edit mode', () => {
   const { getByRole, getByLabelText, container } = setup()
   fireEvent.click(getByRole('button', { name: '編輯' }))

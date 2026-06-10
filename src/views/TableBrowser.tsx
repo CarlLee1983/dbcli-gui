@@ -11,6 +11,9 @@ export interface TableBrowserProps {
   permission: Permission
   saving: boolean
   onSave(ops: MutateOps): Promise<boolean> | void
+  // When set (arbitrary-SQL edit), render only the schema columns that appear in this
+  // result-field list; undefined (sidebar browse) renders the full table schema.
+  columns?: string[]
 }
 
 function canWrite(p: Permission): boolean {
@@ -22,13 +25,18 @@ function renderValue(v: unknown): string {
   return typeof v === 'object' ? JSON.stringify(v) : String(v)
 }
 
-export function TableBrowser({ table, schema, rows, permission, saving, onSave }: TableBrowserProps) {
+export function TableBrowser({ table, schema, rows, permission, saving, onSave, columns }: TableBrowserProps) {
   const [editMode, setEditMode] = useState(false)
   const edit = useDataEdit()
   const pk = schema.primaryKey ?? []
   const hasPk = pk.length > 0
   const editable = hasPk && canWrite(permission)
-  const cols = schema.columns.map((c) => c.name)
+  // Render the intersection of schema columns and the result fields (preserving schema
+  // order); a full SELECT * browse passes no `columns` and renders every column.
+  const cols = columns ? schema.columns.map((c) => c.name).filter((c) => columns.includes(c)) : schema.columns.map((c) => c.name)
+  // A partial projection can't supply values for unprojected (possibly NOT NULL) columns,
+  // so inserting a new row would fail at the DB — only offer it when all columns render.
+  const canInsert = cols.length === schema.columns.length
   const byKey = Object.fromEntries(rows.map((r) => [rowKeyOf(r, pk), r]))
   const count = pendingCount(edit.edits)
 
@@ -45,7 +53,9 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave }
         {editMode ? (
           <div className="flex items-center gap-2">
             <span className="text-slate-500 dark:text-slate-400">{count} 筆待儲存</span>
-            <button type="button" onClick={() => edit.addInsert()} className="flex items-center gap-1 rounded border border-slate-300 dark:border-slate-700 px-2 py-1"><Plus className="h-3.5 w-3.5" />新增列</button>
+            {canInsert ? (
+              <button type="button" onClick={() => edit.addInsert()} className="flex items-center gap-1 rounded border border-slate-300 dark:border-slate-700 px-2 py-1"><Plus className="h-3.5 w-3.5" />新增列</button>
+            ) : null}
             <button type="button" onClick={exitEdit} className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1">取消</button>
             <button type="button" onClick={save} disabled={saving || count === 0} className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-50">儲存{saving ? '中…' : ''}</button>
           </div>
