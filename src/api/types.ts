@@ -24,6 +24,8 @@ export interface TableColumnDto {
   nullable: boolean
   primaryKey?: boolean
   default?: string
+  /** Column comment/description (MySQL/MariaDB COLUMN_COMMENT, PostgreSQL col description). */
+  comment?: string | null
 }
 
 export interface TableSchemaDto {

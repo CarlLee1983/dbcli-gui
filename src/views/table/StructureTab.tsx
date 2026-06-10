@@ -11,7 +11,7 @@ export function StructureTab({ schema }: { schema: TableSchemaDto }) {
       <table className="w-full border-separate border-spacing-0 text-left font-mono">
         <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800">
           <tr>
-            {['欄位', '型別', 'Null', '預設', 'PK'].map((h) => (
+            {['欄位', '型別', 'Null', '預設', 'PK', '說明'].map((h) => (
               <th key={h} className="border-b border-slate-200 dark:border-slate-700 px-3 py-2 font-semibold text-slate-700 dark:text-slate-300">{h}</th>
             ))}
           </tr>
@@ -26,6 +26,7 @@ export function StructureTab({ schema }: { schema: TableSchemaDto }) {
               <td className="border-b border-slate-100 dark:border-slate-800/40 px-3 py-1.5">
                 {pk.has(c.name) ? <KeyRound className="h-3.5 w-3.5 text-amber-500" aria-label="主鍵" /> : null}
               </td>
+              <td className="border-b border-slate-100 dark:border-slate-800/40 px-3 py-1.5 text-slate-500 dark:text-slate-400">{c.comment ?? ''}</td>
             </tr>
           ))}
         </tbody>

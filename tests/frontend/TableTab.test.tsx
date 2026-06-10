@@ -15,6 +15,7 @@ const baseProps = {
   saving: false,
   onSetSubTab: noop,
   onLoadSubTab: noop,
+  onLoadContent: noop,
   onOpenQuery: noop,
   onSave: async () => true,
 }
@@ -35,6 +36,19 @@ test('clicking a sub-tab fires onSetSubTab + onLoadSubTab for lazy tabs', () => 
   fireEvent.click(screen.getByRole('button', { name: '觸發器' }))
   expect(calls).toContain('set:triggers')
   expect(calls).toContain('load:triggers')
+})
+
+test('clicking 內容 from a structure-opened tab (no rows) fires onLoadContent', () => {
+  let loads = 0
+  render(<TableTab session={session()} {...baseProps} onLoadContent={() => { loads++ }} />)
+  fireEvent.click(screen.getByRole('button', { name: '內容' }))
+  expect(loads).toBeGreaterThan(0)
+})
+
+test('content sub-tab with rows already loaded does not refetch', () => {
+  let loads = 0
+  render(<TableTab session={session({ subTab: 'content', rows: [{ id: 1 }] })} {...baseProps} onLoadContent={() => { loads++ }} />)
+  expect(loads).toBe(0)
 })
 
 test('structure sub-tab does not trigger a lazy load', () => {

@@ -7,6 +7,7 @@ export interface SeedColumn {
   type: string
   nullable: boolean
   primaryKey?: boolean
+  comment?: string
 }
 
 export interface SeedTable {
@@ -39,7 +40,7 @@ export const SEED: SeedConnection[] = [
         name: 'orders',
         type: 'table',
         columns: [
-          { name: 'id', type: 'integer', nullable: false, primaryKey: true },
+          { name: 'id', type: 'integer', nullable: false, primaryKey: true, comment: '訂單主鍵' },
           { name: 'label', type: 'text', nullable: false },
         ],
         rows: [

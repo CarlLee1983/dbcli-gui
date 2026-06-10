@@ -80,6 +80,40 @@ test('openTableTab(content) fetches rows for the browser', async () => {
   expect(result.current.tabs.active.table?.rows).toEqual([{ id: 1 }])
 })
 
+test('loadContent fetches content rows on demand and is a no-op once loaded', async () => {
+  // A tab opened on Structure carries no rows; navigating to Content must fetch them.
+  let calls = 0
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => { calls++; queryCalls.push(sql); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'structure') })
+  const id = result.current.tabs.activeId
+  expect(result.current.tabs.active.table?.rows).toBeUndefined()
+  await act(async () => { await result.current.loadContent(id) })
+  expect(result.current.tabs.active.table?.rows).toEqual([{ id: 1 }])
+  expect(queryCalls.some((sql) => sql.includes('orders'))).toBe(true)
+  await act(async () => { await result.current.loadContent(id) })
+  expect(calls).toBe(1)
+})
+
+test('loadContent dedupes concurrent in-flight fetches', async () => {
+  let calls = 0
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async () => { calls++; await Promise.resolve(); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'structure') })
+  const id = result.current.tabs.activeId
+  await act(async () => {
+    await Promise.all([result.current.loadContent(id), result.current.loadContent(id)])
+  })
+  expect(calls).toBe(1)
+})
+
 test('loadSubTab caches triggers and is a no-op on second call', async () => {
   let calls = 0
   const { result } = renderHook(() => useApp(fakeClient({

@@ -255,6 +255,7 @@ export function App() {
                 saving={app.saving}
                 onSetSubTab={(s) => tabs.setSubTab(tabs.activeId, s)}
                 onLoadSubTab={(k) => app.loadSubTab(tabs.activeId, k)}
+                onLoadContent={() => app.loadContent(tabs.activeId)}
                 onOpenQuery={(sql) => tabs.openQuery(sql)}
                 onSave={(ops) => app.saveTableEdits(active.table!.table, ops)}
               />

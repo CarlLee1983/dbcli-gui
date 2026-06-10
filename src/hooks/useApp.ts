@@ -17,6 +17,7 @@ export interface AppApi {
   exportResult(format: 'csv' | 'json'): Promise<void>
   openTableTab(table: string, subTab?: SubTab): Promise<void>
   loadSubTab(tabId: string, key: LazyKey): Promise<void>
+  loadContent(tabId: string): Promise<void>
   saveTableEdits(table: string, ops: MutateOps): Promise<boolean>
   editQueryResult(): Promise<void>
   switchWorkspace(id: string): Promise<void>
@@ -84,6 +85,29 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [connections, tabs.getSession, tabs.setTableCache, tabs.setSubTabError])
 
+  // Content rows are fetched up front only when a tab opens directly on Content (the
+  // pencil affordance). A tab opened on Structure (table-name click) carries no rows, so
+  // navigating to the Content sub-tab must fetch them on demand — mirroring the lazy
+  // sub-tabs. undefined rows = not loaded; an empty table legitimately yields [].
+  const loadContent = useCallback(async (tabId: string) => {
+    const connId = connections.activeConnectionId
+    const session = tabs.getSession(tabId)
+    const t = session?.table
+    if (!connId || !t || t.rows !== undefined) return // cache hit (incl. empty result)
+    const flightKey = `${tabId}:content`
+    if (inFlight.current.has(flightKey)) return // a fetch for this tab's content is already running
+    inFlight.current.add(flightKey)
+    try {
+      const sql = t.sql ?? `SELECT * FROM ${t.table} LIMIT 200`
+      const res = await connections.client.query(connId, sql)
+      tabs.setTableRows(tabId, res.rows)
+    } catch (err) {
+      connections.setError(toApiError(err))
+    } finally {
+      inFlight.current.delete(flightKey)
+    }
+  }, [connections, tabs.getSession, tabs.setTableRows])
+
   // Stage two: open the active arbitrary-SQL result for editing when it is a plain
   // single-table SELECT whose primary key is projected. The structural detection is
   // cheap and gates the UI affordance; the schema fetch + editability gate run here on
@@ -150,5 +174,5 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [workspaces, connections, tabs])
 
-  return { connections, history, tabs, workspaces, saving, exportResult, openTableTab, loadSubTab, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
+  return { connections, history, tabs, workspaces, saving, exportResult, openTableTab, loadSubTab, loadContent, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
 }

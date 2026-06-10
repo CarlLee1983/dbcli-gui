@@ -9,8 +9,10 @@ test('open a table tab, switch all five sub-tabs, then open a new query', async 
   await page.getByRole('button', { name: /^orders/ }).first().click()
   await expect(page.getByRole('button', { name: '結構' })).toBeVisible()
 
-  // Structure shows columns
+  // Structure shows columns + the 說明 (comment) column with the seeded comment text
   await expect(page.getByText('id', { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: '說明' })).toBeVisible()
+  await expect(page.getByText('訂單主鍵')).toBeVisible()
 
   // Triggers (lazy)
   await page.getByRole('button', { name: '觸發器' }).click()
@@ -24,9 +26,11 @@ test('open a table tab, switch all five sub-tabs, then open a new query', async 
   await page.getByRole('button', { name: '關聯' }).click()
   await expect(page.getByText(/order_items/)).toBeVisible()
 
-  // Content → editable browser
+  // Content → editable browser. The tab opened on Structure, so its rows are fetched
+  // on demand when Content is first shown — the actual row values must appear.
   await page.getByRole('button', { name: '內容' }).click()
   await expect(page.getByRole('button', { name: '編輯', exact: true })).toBeVisible()
+  await expect(page.getByText('orders-row-1')).toBeVisible()
 
   // Open a new query prefilled from this table
   await page.getByRole('button', { name: /以此表開新查詢/ }).click()

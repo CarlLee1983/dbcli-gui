@@ -26,17 +26,21 @@ export interface TableTabProps {
   saving: boolean
   onSetSubTab(subTab: SubTab): void
   onLoadSubTab(key: LazyKey): void
+  onLoadContent(): void
   onOpenQuery(sql: string): void
   onSave(ops: MutateOps): Promise<boolean> | void
 }
 
-export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTab, onOpenQuery, onSave }: TableTabProps) {
+export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTab, onLoadContent, onOpenQuery, onSave }: TableTabProps) {
   const { subTab } = session
 
   // When the active sub-tab is lazy and uncached, fetch it (covers programmatic opens, e.g. edit flow).
+  // Content is not in LAZY (its rows live on the session, not a cache slot) but loads the same way:
+  // a tab opened on Structure carries no rows, so showing Content must fetch them.
   useEffect(() => {
     const key = LAZY[subTab]
     if (key && session[key] === undefined && !session.cacheErrors?.[key]) onLoadSubTab(key)
+    if (subTab === 'content' && session.rows === undefined) onLoadContent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab, session.table])
 
@@ -47,6 +51,7 @@ export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTa
     // a sub-tab that previously errored should retry the fetch. The effect skips errored
     // sub-tabs so a programmatic open doesn't auto-loop on a persistent failure.
     if (lazy && session[lazy] === undefined) onLoadSubTab(lazy)
+    if (key === 'content' && session.rows === undefined) onLoadContent()
   }
 
   return (
