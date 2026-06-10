@@ -114,6 +114,90 @@ test('loadContent dedupes concurrent in-flight fetches', async () => {
   expect(calls).toBe(1)
 })
 
+test('sortContent re-fetches with ORDER BY and stores the sort + sql', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 2 }], fields: ['id'], rowCount: 1, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  queryCalls.length = 0
+  await act(async () => { await result.current.sortContent(id, 'id', 'asc') })
+  expect(queryCalls).toEqual(['SELECT * FROM orders ORDER BY id ASC LIMIT 200'])
+  expect(result.current.tabs.active.table?.sortField).toBe('id')
+  expect(result.current.tabs.active.table?.sortDir).toBe('asc')
+  expect(result.current.tabs.active.table?.sql).toBe('SELECT * FROM orders ORDER BY id ASC LIMIT 200')
+  expect(result.current.tabs.active.table?.rows).toEqual([{ id: 2 }])
+})
+
+test('sortContent with dir=null drops the ORDER BY clause and clears the sort field', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  queryCalls.length = 0
+  await act(async () => { await result.current.sortContent(id, 'id', null) })
+  expect(queryCalls).toEqual(['SELECT * FROM orders LIMIT 200'])
+  expect(result.current.tabs.active.table?.sortField).toBeNull()
+  expect(result.current.tabs.active.table?.sortDir).toBeNull()
+})
+
+test('sortContent is a no-op for an arbitrary-SQL edit tab (fields set)', async () => {
+  const editableSchema = { name: 'users', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }], primaryKey: ['id'] }
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async () => editableSchema,
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1, name: 'a' }], fields: ['id', 'name'], rowCount: 1, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  act(() => { result.current.tabs.setSql('SELECT id, name FROM users WHERE id < 5') })
+  await act(async () => { await result.current.tabs.runQuery() })
+  await act(async () => { await result.current.editQueryResult() })
+  const id = result.current.tabs.activeId
+  queryCalls.length = 0
+  await act(async () => { await result.current.sortContent(id, 'id', 'asc') })
+  expect(queryCalls).toHaveLength(0)
+  expect(result.current.tabs.active.table?.sql).toBe('SELECT id, name FROM users WHERE id < 5')
+})
+
+test('sortContent surfaces an error and leaves the sort unchanged on query failure', async () => {
+  let fail = false
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async () => { if (fail) throw new Error('boom'); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  fail = true
+  await act(async () => { await result.current.sortContent(id, 'id', 'asc') })
+  expect(result.current.connections.error).not.toBeNull()
+  expect(result.current.tabs.active.table?.sortField ?? null).toBeNull()
+})
+
+test('saveTableEdits replays the sorted SQL after a content sort', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 } },
+    mutate: async () => ({ ok: true, applied: { updated: 1, inserted: 0, deleted: 0 } }),
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  await act(async () => { await result.current.sortContent(id, 'id', 'desc') })
+  queryCalls.length = 0
+  await act(async () => { await result.current.saveTableEdits('orders', { updates: [], inserts: [], deletes: [] }) })
+  expect(queryCalls).toEqual(['SELECT * FROM orders ORDER BY id DESC LIMIT 200'])
+})
+
 test('loadSubTab caches triggers and is a no-op on second call', async () => {
   let calls = 0
   const { result } = renderHook(() => useApp(fakeClient({

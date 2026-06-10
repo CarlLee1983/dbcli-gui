@@ -3,6 +3,7 @@ import { Trash2, X, Plus } from 'lucide-react'
 import type { TableSchemaDto, MutateOps, Permission } from '../api/types'
 import { useDataEdit } from '../hooks/useDataEdit'
 import { buildMutateOps, rowKeyOf, pendingCount } from '../hooks/data-edit'
+import { nextSortDir, type SortDir } from './grid-virtual'
 
 export interface TableBrowserProps {
   table: string
@@ -14,6 +15,11 @@ export interface TableBrowserProps {
   // When set (arbitrary-SQL edit), render only the schema columns that appear in this
   // result-field list; undefined (sidebar browse) renders the full table schema.
   columns?: string[]
+  // Server-side column sort: when onSort is provided, headers become clickable and clicking
+  // one re-fetches the rows ordered by that column (full-table browse only).
+  sortField?: string | null
+  sortDir?: SortDir
+  onSort?(field: string, dir: SortDir): void
 }
 
 function canWrite(p: Permission): boolean {
@@ -25,7 +31,7 @@ function renderValue(v: unknown): string {
   return typeof v === 'object' ? JSON.stringify(v) : String(v)
 }
 
-export function TableBrowser({ table, schema, rows, permission, saving, onSave, columns }: TableBrowserProps) {
+export function TableBrowser({ table, schema, rows, permission, saving, onSave, columns, sortField, sortDir, onSort }: TableBrowserProps) {
   const [editMode, setEditMode] = useState(false)
   const edit = useDataEdit()
   const pk = schema.primaryKey ?? []
@@ -39,6 +45,15 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave, 
   const canInsert = cols.length === schema.columns.length
   const byKey = Object.fromEntries(rows.map((r) => [rowKeyOf(r, pk), r]))
   const count = pendingCount(edit.edits)
+
+  // Sorting re-fetches from the server, which would discard unsaved edits — only offer it
+  // while browsing (read-only), not in edit mode.
+  const sortable = !!onSort && !editMode
+  const onHeaderClick = (field: string) => {
+    if (!onSort) return
+    const dir = field === sortField ? nextSortDir(sortDir ?? null) : 'asc'
+    onSort(field, dir)
+  }
 
   const exitEdit = () => { edit.reset(); setEditMode(false) }
   const save = async () => {
@@ -74,9 +89,31 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave, 
         <table className="w-full border-separate border-spacing-0 text-left font-mono">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
             <tr>
-              {cols.map((c) => (
-                <th key={c} className="border-b border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-700 dark:text-slate-300 font-semibold">{c}</th>
-              ))}
+              {cols.map((c) =>
+                sortable ? (
+                  <th
+                    key={c}
+                    onClick={() => onHeaderClick(c)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHeaderClick(c) } }}
+                    tabIndex={0}
+                    aria-sort={sortField === c ? (sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none') : undefined}
+                    className="cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>{c}</span>
+                      {sortField === c && sortDir ? (
+                        sortDir === 'asc' ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-blue-500 dark:text-blue-400"><path d="m18 15-6-6-6 6"/></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-blue-500 dark:text-blue-400"><path d="m6 9 6 6 6-6"/></svg>
+                        )
+                      ) : null}
+                    </div>
+                  </th>
+                ) : (
+                  <th key={c} className="border-b border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-700 dark:text-slate-300 font-semibold">{c}</th>
+                ),
+              )}
               {editMode ? <th className="border-b border-slate-200 dark:border-slate-700 px-2 py-2" /> : null}
             </tr>
           </thead>

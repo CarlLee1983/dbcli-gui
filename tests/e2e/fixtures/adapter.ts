@@ -52,9 +52,23 @@ export function fixtureAdapter(tables: SeedTable[]): DatabaseAdapter {
       if (sql.includes('pg_class') || sql.includes('information_schema.TABLES')) {
         return { rows: [{ engine: 'InnoDB', rowCount: 3, sizeBytes: 16384, collation: 'utf8mb4_general_ci', createdAt: '2024-01-01' }] as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
       }
-      // plain SELECT → seed rows
+      // plain SELECT → seed rows, honouring a trailing ORDER BY <col> [ASC|DESC] so the
+      // content sub-tab's server-side sort can be exercised end-to-end.
       const t = tables.find((tb) => new RegExp(`\\b${tb.name}\\b`).test(sql))
-      return { rows: (t?.rows ?? []) as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
+      let rows = [...(t?.rows ?? [])]
+      const order = /ORDER\s+BY\s+(\w+)\s*(ASC|DESC)?/i.exec(sql)
+      if (order) {
+        const col = order[1] as string
+        const desc = (order[2] ?? 'ASC').toUpperCase() === 'DESC'
+        rows.sort((a, b) => {
+          const av = a[col]
+          const bv = b[col]
+          if (av === bv) return 0
+          const cmp = (av as number | string) < (bv as number | string) ? -1 : 1
+          return desc ? -cmp : cmp
+        })
+      }
+      return { rows: rows as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
     },
   }
 }

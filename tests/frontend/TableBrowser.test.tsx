@@ -138,6 +138,47 @@ test('keeps 新增列 when columns cover the full schema', () => {
   expect(getByRole('button', { name: '新增列' })).toBeDefined()
 })
 
+test('headers are not clickable when onSort is absent', () => {
+  const { container } = setup()
+  const th = container.querySelector('thead th') as HTMLElement
+  expect(th.getAttribute('tabindex')).toBeNull()
+  expect(th.className).not.toContain('cursor-pointer')
+})
+
+test('clicking a header with onSort requests asc, then desc, then back to default', () => {
+  const calls: Array<[string, unknown]> = []
+  const { getByText, rerender } = setup({ onSort: (f, d) => calls.push([f, d]) })
+  fireEvent.click(getByText('id'))
+  expect(calls.at(-1)).toEqual(['id', 'asc'])
+  // Re-render reflecting the new sort state, then click again to cycle.
+  rerender(
+    <TableBrowser table="users" schema={schema} rows={rows} permission="data-admin" saving={false}
+      onSave={() => {}} onSort={(f, d) => calls.push([f, d])} sortField="id" sortDir="asc" />,
+  )
+  fireEvent.click(getByText('id'))
+  expect(calls.at(-1)).toEqual(['id', 'desc'])
+  rerender(
+    <TableBrowser table="users" schema={schema} rows={rows} permission="data-admin" saving={false}
+      onSave={() => {}} onSort={(f, d) => calls.push([f, d])} sortField="id" sortDir="desc" />,
+  )
+  fireEvent.click(getByText('id'))
+  expect(calls.at(-1)).toEqual(['id', null])
+})
+
+test('clicking a different header starts at asc', () => {
+  const calls: Array<[string, unknown]> = []
+  const { getByText } = setup({ onSort: (f, d) => calls.push([f, d]), sortField: 'id', sortDir: 'desc' })
+  fireEvent.click(getByText('name'))
+  expect(calls.at(-1)).toEqual(['name', 'asc'])
+})
+
+test('headers stop being clickable in edit mode (sort would discard unsaved edits)', () => {
+  const { getByRole, container } = setup({ onSort: () => {} })
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  const th = container.querySelector('thead th') as HTMLElement
+  expect(th.className).not.toContain('cursor-pointer')
+})
+
 test('cancel resets staged edits and exits edit mode', () => {
   const { getByRole, getByLabelText, container } = setup()
   fireEvent.click(getByRole('button', { name: '編輯' }))

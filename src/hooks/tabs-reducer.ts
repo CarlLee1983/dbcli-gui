@@ -25,6 +25,9 @@ export interface TableSession {
   sql?: string
   // Result column names for an arbitrary-SQL edit; undefined = full schema browse.
   fields?: string[]
+  // Content sub-tab sort — server-side ORDER BY re-fetch; null/undefined = default order.
+  sortField?: string | null
+  sortDir?: SortDir
 }
 
 export interface QuerySession {
@@ -77,6 +80,7 @@ export type TabsAction =
   | { type: 'patch'; id: string; patch: Partial<QuerySession> }
   | { type: 'openTableTab'; session: TableSession }
   | { type: 'setTableRows'; id: string; rows: Array<Record<string, unknown>> }
+  | { type: 'setContentSort'; id: string; sortField: string | null; sortDir: SortDir; sql: string; rows: Array<Record<string, unknown>> }
   | { type: 'setSubTab'; id: string; subTab: SubTab }
   | { type: 'setTableCache'; id: string; key: LazyKey; value: TriggerDto[] | TableInfoDto | RelationsDto }
   | { type: 'setSubTabError'; id: string; key: LazyKey; error: SubTabError }
@@ -145,6 +149,10 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
     }
     case 'setTableRows':
       return mapTable(state, action.id, (t) => ({ ...t, rows: action.rows }))
+    case 'setContentSort':
+      // Commit the re-fetched rows together with the sort state and the SQL that produced
+      // them, so a later save replays the same sorted/limited view.
+      return mapTable(state, action.id, (t) => ({ ...t, sortField: action.sortField, sortDir: action.sortDir, sql: action.sql, rows: action.rows }))
     case 'setSubTab':
       return mapTable(state, action.id, (t) => ({ ...t, subTab: action.subTab }))
     case 'setTableCache':

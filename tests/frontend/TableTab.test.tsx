@@ -16,6 +16,7 @@ const baseProps = {
   onSetSubTab: noop,
   onLoadSubTab: noop,
   onLoadContent: noop,
+  onSortContent: noop,
   onOpenQuery: noop,
   onSave: async () => true,
 }

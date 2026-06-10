@@ -32,6 +32,14 @@ test('open a table tab, switch all five sub-tabs, then open a new query', async 
   await expect(page.getByRole('button', { name: '編輯', exact: true })).toBeVisible()
   await expect(page.getByText('orders-row-1')).toBeVisible()
 
+  // Clicking the id header re-fetches sorted ascending, then descending — the server
+  // returns reordered rows (asc: row-1 first; desc: row-3 first).
+  const firstLabel = () => page.locator('tbody tr td').nth(1)
+  await page.getByRole('columnheader', { name: 'id' }).click()
+  await expect(firstLabel()).toHaveText('orders-row-1')
+  await page.getByRole('columnheader', { name: 'id' }).click()
+  await expect(firstLabel()).toHaveText('orders-row-3')
+
   // Open a new query prefilled from this table
   await page.getByRole('button', { name: /以此表開新查詢/ }).click()
   await expect(page.getByLabel('SQL 查詢')).toHaveValue(/SELECT \* FROM orders/)

@@ -30,6 +30,7 @@ export interface TabsApi {
   dismissError(): void
   openTableTab(session: TableSession): void
   setTableRows(id: string, rows: Array<Record<string, unknown>>): void
+  setContentSort(id: string, sortField: string | null, sortDir: SortDir, sql: string, rows: Array<Record<string, unknown>>): void
   setSubTab(id: string, subTab: SubTab): void
   setTableCache(id: string, key: LazyKey, value: TriggerDto[] | TableInfoDto | RelationsDto): void
   setSubTabError(id: string, key: LazyKey, error: SubTabError): void
@@ -64,6 +65,7 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
   const setActive = useCallback((id: string) => dispatch({ type: 'setActive', id }), [])
   const openTableTab = useCallback((session: TableSession) => dispatch({ type: 'openTableTab', session }), [])
   const setTableRows = useCallback((id: string, rows: Array<Record<string, unknown>>) => dispatch({ type: 'setTableRows', id, rows }), [])
+  const setContentSort = useCallback((id: string, sortField: string | null, sortDir: SortDir, sql: string, rows: Array<Record<string, unknown>>) => dispatch({ type: 'setContentSort', id, sortField, sortDir, sql, rows }), [])
   const setSubTab = useCallback((id: string, subTab: SubTab) => dispatch({ type: 'setSubTab', id, subTab }), [])
   const setTableCache = useCallback((id: string, key: LazyKey, value: TriggerDto[] | TableInfoDto | RelationsDto) => dispatch({ type: 'setTableCache', id, key, value }), [])
   const setSubTabError = useCallback((id: string, key: LazyKey, error: SubTabError) => dispatch({ type: 'setSubTabError', id, key, error }), [])
@@ -100,6 +102,6 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
     sessions: state.sessions, activeId: state.activeId, active, getSession,
     openTab, openQuery, closeTab, renameTab, setActive,
     setSql, loadSql, setSort, setResultFilter, runQuery, dismissError,
-    openTableTab, setTableRows, setSubTab, setTableCache, setSubTabError, resetAll,
+    openTableTab, setTableRows, setContentSort, setSubTab, setTableCache, setSubTabError, resetAll,
   }
 }

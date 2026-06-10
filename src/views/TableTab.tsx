@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { SquarePen } from 'lucide-react'
 import type { TableSession, LazyKey } from '../hooks/tabs-reducer'
 import type { SubTab, MutateOps, Permission } from '../api/types'
+import type { SortDir } from './grid-virtual'
 import { StructureTab } from './table/StructureTab'
 import { RelationsTab } from './table/RelationsTab'
 import { TriggersTab } from './table/TriggersTab'
@@ -27,11 +28,12 @@ export interface TableTabProps {
   onSetSubTab(subTab: SubTab): void
   onLoadSubTab(key: LazyKey): void
   onLoadContent(): void
+  onSortContent(field: string, dir: SortDir): void
   onOpenQuery(sql: string): void
   onSave(ops: MutateOps): Promise<boolean> | void
 }
 
-export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTab, onLoadContent, onOpenQuery, onSave }: TableTabProps) {
+export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTab, onLoadContent, onSortContent, onOpenQuery, onSave }: TableTabProps) {
   const { subTab } = session
 
   // When the active sub-tab is lazy and uncached, fetch it (covers programmatic opens, e.g. edit flow).
@@ -93,6 +95,11 @@ export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTa
             permission={permission}
             saving={saving}
             onSave={onSave}
+            sortField={session.sortField ?? null}
+            sortDir={session.sortDir ?? null}
+            // Server-side sort applies only to a full-table browse; an arbitrary-SQL edit
+            // tab (fields set) keeps its own SQL, so its headers stay non-clickable.
+            onSort={session.fields === undefined ? onSortContent : undefined}
           />
         )}
         {subTab === 'relations' && <RelationsTab relations={session.relations} error={session.cacheErrors?.relations} />}

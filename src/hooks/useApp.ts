@@ -7,6 +7,15 @@ import { useWorkspaces, type WorkspacesApi } from './useWorkspaces'
 import { detectSingleTable, resultIsEditable } from './single-table'
 import type { MutateOps, SubTab } from '../api/types'
 import type { LazyKey } from './tabs-reducer'
+import type { SortDir } from '../views/grid-virtual'
+
+// Full-table browse SQL. LIMIT 200 mirrors the sidebar browse default (more rows to edit).
+// `table` and `sortField` are server-enumerated identifiers (schema tree / columns), not free
+// user input, so they are interpolated unquoted to match the existing FROM-clause convention.
+function buildBrowseSql(table: string, sortField: string | null, sortDir: SortDir): string {
+  const order = sortField && sortDir ? ` ORDER BY ${sortField} ${sortDir === 'desc' ? 'DESC' : 'ASC'}` : ''
+  return `SELECT * FROM ${table}${order} LIMIT 200`
+}
 
 export interface AppApi {
   connections: ConnectionsApi
@@ -18,6 +27,7 @@ export interface AppApi {
   openTableTab(table: string, subTab?: SubTab): Promise<void>
   loadSubTab(tabId: string, key: LazyKey): Promise<void>
   loadContent(tabId: string): Promise<void>
+  sortContent(tabId: string, field: string, dir: SortDir): Promise<void>
   saveTableEdits(table: string, ops: MutateOps): Promise<boolean>
   editQueryResult(): Promise<void>
   switchWorkspace(id: string): Promise<void>
@@ -49,9 +59,8 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     try {
       const schema = await connections.client.schemaTable(connId, table)
       // `table` is a server-enumerated identifier from the schema tree (not free user input).
-      // LIMIT 200 mirrors the existing sidebar browse default (more rows to edit); the
-      // "以此表開新查詢" button deliberately uses LIMIT 100, matching the insert-select default.
-      const sql = `SELECT * FROM ${table} LIMIT 200`
+      // The "以此表開新查詢" button deliberately uses LIMIT 100, matching the insert-select default.
+      const sql = buildBrowseSql(table, null, null)
       // Content sub-tab needs rows up front so the browser renders immediately.
       const rows = subTab === 'content' ? (await connections.client.query(connId, sql)).rows : undefined
       tabs.openTableTab({ connectionId: connId, table, schema, subTab, sql, rows })
@@ -98,7 +107,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     if (inFlight.current.has(flightKey)) return // a fetch for this tab's content is already running
     inFlight.current.add(flightKey)
     try {
-      const sql = t.sql ?? `SELECT * FROM ${t.table} LIMIT 200`
+      const sql = t.sql ?? buildBrowseSql(t.table, t.sortField ?? null, t.sortDir ?? null)
       const res = await connections.client.query(connId, sql)
       tabs.setTableRows(tabId, res.rows)
     } catch (err) {
@@ -107,6 +116,24 @@ export function useApp(client: DbClient = defaultClient): AppApi {
       inFlight.current.delete(flightKey)
     }
   }, [connections, tabs.getSession, tabs.setTableRows])
+
+  // Re-fetch the content rows ordered by a clicked column (server-side ORDER BY), so the
+  // sort spans the whole table rather than just the loaded 200 rows. Only a full-table
+  // browse is reordered; an arbitrary-SQL edit tab (fields set) keeps its own SQL untouched.
+  const sortContent = useCallback(async (tabId: string, field: string, dir: SortDir) => {
+    const connId = connections.activeConnectionId
+    const session = tabs.getSession(tabId)
+    const t = session?.table
+    if (!connId || !t || t.fields !== undefined) return
+    const sortField = dir ? field : null
+    const sql = buildBrowseSql(t.table, sortField, dir)
+    try {
+      const res = await connections.client.query(connId, sql)
+      tabs.setContentSort(tabId, sortField, dir, sql, res.rows)
+    } catch (err) {
+      connections.setError(toApiError(err))
+    }
+  }, [connections, tabs.getSession, tabs.setContentSort])
 
   // Stage two: open the active arbitrary-SQL result for editing when it is a plain
   // single-table SELECT whose primary key is projected. The structural detection is
@@ -139,7 +166,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     const tabId = tabs.activeId
     // Replay the session's own fetch query so an edited arbitrary SELECT refreshes the
     // same filtered view rather than a full-table scan.
-    const refetchSql = tabs.active.table?.sql ?? `SELECT * FROM ${table} LIMIT 200`
+    const refetchSql = tabs.active.table?.sql ?? buildBrowseSql(table, null, null)
     setSaving(true)
     try {
       await connections.client.mutate(connId, table, ops)
@@ -174,5 +201,5 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [workspaces, connections, tabs])
 
-  return { connections, history, tabs, workspaces, saving, exportResult, openTableTab, loadSubTab, loadContent, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
+  return { connections, history, tabs, workspaces, saving, exportResult, openTableTab, loadSubTab, loadContent, sortContent, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
 }
