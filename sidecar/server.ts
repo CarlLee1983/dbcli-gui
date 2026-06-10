@@ -10,6 +10,7 @@ import { makeQueryHandler } from './routes/query'
 import { makeSchemaHandlers } from './routes/schema'
 import { makeExportHandler } from './routes/export'
 import { makeConnectionAdminHandlers } from './routes/connections-admin'
+import { makeDataHandlers } from './routes/data'
 
 export interface ServerDeps {
   pool: ConnectionPool
@@ -27,6 +28,7 @@ export function createServer(deps: ServerDeps): Server<unknown> {
   const conn = makeConnectionHandlers(deps.pool)
   const schema = makeSchemaHandlers(deps.pool)
   const admin = makeConnectionAdminHandlers(deps.dbcliPath)
+  const data = makeDataHandlers(deps.pool)
   const post = (h: Handler) => ({ POST: withCors(guard(deps.token, h)), OPTIONS: corsPreflight })
   return Bun.serve({
     port: deps.port,
@@ -39,6 +41,7 @@ export function createServer(deps: ServerDeps): Server<unknown> {
       '/schema/tree': post(schema.tree),
       '/schema/table': post(schema.table),
       '/export': post(makeExportHandler(deps.pool)),
+      '/data/mutate': post(data.mutate),
       '/connections/create': post(admin.create),
       '/connections/update': post(admin.update),
       '/connections/delete': post(admin.remove),
