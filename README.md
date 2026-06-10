@@ -41,6 +41,14 @@ write SQL → result grid → export. `query-only` permission. macOS Apple Silic
 - **安全寫回 `.dbcli`**：透過 `@carllee1983/dbcli/core`（>=1.30.0）的連線 writer 寫 v2 多連線設定;密碼存連線專屬 env 檔（`{$env}` 參照、per-connection 命名空間），編輯時留白代表不修改、真實密碼不回傳前端。寫設定採原子寫（temp+rename）保護既有設定庫。
 - **v1 自動升級**：對既有 v1 單連線專案新增第二條連線時，自動 migrate 成 v2（非 SQL 連線會擋下，避免毀損設定）。
 
+## v2 ‧ 資料編輯
+
+- **入口**：在側邊欄資料表列點該表的「編輯資料」按鈕（鉛筆圖示），開啟「表瀏覽」分頁。
+- **編輯模式**：預設唯讀；按「編輯」進入可改狀態。改動以視覺標記累積為「暫存變更」（修改=黃底、新增列=綠底、待刪除=紅底+刪除線），按「儲存」以單一資料庫交易一次送出（全成或全敗）；「取消」放棄所有暫存。
+- **權限需求**：INSERT / UPDATE 需連線權限 `read-write` 以上；DELETE 需 `data-admin` 以上；`query-only` 連線無法編輯（編輯按鈕停用）。
+- **安全**：被 blacklist 的資料表或欄位無法編輯或寫入；無主鍵的資料表無法安全識別列，顯示提示並停用編輯。
+- **範圍**：目前支援 SQL 三系統（MySQL / PostgreSQL / MariaDB）；任意 SQL 查詢結果目前為唯讀（未來支援單表查詢結果直接編輯）。
+
 ## Build order
 
 1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ✓ done
