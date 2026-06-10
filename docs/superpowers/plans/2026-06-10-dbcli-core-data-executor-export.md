@@ -92,11 +92,13 @@ Expected: 輸出 ≥ 1(`dist/core.d.ts` 內出現 `DataExecutor` 宣告)。
 Run: `bun test`
 Expected: ALL PASS(維持既有全綠基線)。
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit(只提交版本 bump;dist 不入 git)**
+
+> `dist/` 在 `.gitignore`、不被追蹤;`npm publish` 會由 `prepublishOnly: bun run build` 自動重建,`files` 欄位再打包 `dist/`。故 commit 只含 `package.json`,本地 build 出的 `dist/` 留在磁碟供開發用即可。
 
 ```bash
-git add package.json dist
-git commit -m "build: [core] 1.31.0 — 重建 dist 含公開 DataExecutor"
+git add package.json
+git commit -m "build: [core] bump 版本 1.31.0 (dist 由 prepublishOnly 於發布時重建)"
 ```
 
 ---
