@@ -38,6 +38,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     try {
       const schema = await connections.client.schemaTable(connId, table)
       // `table` is a server-enumerated identifier from the schema tree (not free user input).
+      // TODO(stage-two): quote the identifier to support reserved-word / special-char table names.
       const result = await connections.client.query(connId, `SELECT * FROM ${table} LIMIT 200`)
       tabs.openBrowse({ table, schema, rows: result.rows })
     } catch (err) {
@@ -53,6 +54,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     try {
       await connections.client.mutate(connId, table, ops)
       // `table` is a server-enumerated identifier from the schema tree (not free user input).
+      // TODO(stage-two): quote the identifier to support reserved-word / special-char table names.
       const result = await connections.client.query(connId, `SELECT * FROM ${table} LIMIT 200`)
       tabs.setBrowseRows(tabId, result.rows)
       return true

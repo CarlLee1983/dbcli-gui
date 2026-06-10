@@ -1,7 +1,5 @@
 import type { MutateOps } from '../api/types'
 
-export type { MutateOps }
-
 export interface PendingEdits {
   updates: Record<string, Record<string, unknown>>
   inserts: Array<Record<string, unknown>>

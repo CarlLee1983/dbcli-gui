@@ -44,3 +44,51 @@ test('exportResult forwards active connection + active sql + format', async () =
   await act(async () => { await result.current.exportResult('csv') })
   expect(calls).toEqual([['a', 'SELECT 1', 'csv']])
 })
+
+test('browseTable calls schemaTable + query and opens a browse tab', async () => {
+  const schemaTableCalls: string[] = []
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async (id, table) => { schemaTableCalls.push(table); return { name: table, columns: [] } },
+    query: async (id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 2 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.browseTable('orders') })
+  expect(schemaTableCalls).toContain('orders')
+  expect(queryCalls.some((sql) => sql.includes('orders'))).toBe(true)
+  expect(result.current.tabs.active.browse?.table).toBe('orders')
+})
+
+test('saveTableEdits on success calls mutate + query and returns true', async () => {
+  const mutateCalls: Array<{ table: string }> = []
+  const queryCalls: string[] = []
+  const ops = { updates: [], inserts: [], deletes: [] }
+  const { result } = renderHook(() => useApp(fakeClient({
+    mutate: async (id, table, _ops) => { mutateCalls.push({ table }); return { ok: true, applied: { updated: 1, inserted: 0, deleted: 0 } } },
+    query: async (id, sql) => { queryCalls.push(sql); return { rows: [], fields: [], rowCount: 0, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  // Open a browse tab first so saveTableEdits has a tab to update
+  await act(async () => { await result.current.browseTable('orders') })
+  let ok = false
+  await act(async () => { ok = await result.current.saveTableEdits('orders', ops) })
+  expect(ok).toBe(true)
+  expect(mutateCalls.some((c) => c.table === 'orders')).toBe(true)
+  expect(queryCalls.some((sql) => sql.includes('orders'))).toBe(true)
+})
+
+test('saveTableEdits returns false and sets error when mutate rejects', async () => {
+  const ops = { updates: [], inserts: [], deletes: [] }
+  const { result } = renderHook(() => useApp(fakeClient({
+    mutate: async () => { throw new Error('db error') },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.browseTable('orders') })
+  let ok = true
+  await act(async () => { ok = await result.current.saveTableEdits('orders', ops) })
+  expect(ok).toBe(false)
+  expect(result.current.connections.error).not.toBeNull()
+})
