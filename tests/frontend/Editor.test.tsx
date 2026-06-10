@@ -5,13 +5,15 @@ import { Editor } from '../../src/views/Editor'
 afterEach(cleanup)
 
 function setup(over: Partial<React.ComponentProps<typeof Editor>> = {}) {
-  const calls = { change: [] as string[], run: 0 }
+  const calls = { change: [] as string[], run: 0, export: [] as string[] }
   render(
     <Editor
       sql="SELECT 1"
       loading={false}
+      hasResult={false}
       onChange={(s) => calls.change.push(s)}
       onRun={() => { calls.run++ }}
+      onExport={(f) => calls.export.push(f)}
       {...over}
     />,
   )
