@@ -135,3 +135,24 @@ test('exportRows() triggers a download with the content-disposition filename', a
     ;(URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = origRevoke
   }
 })
+
+import { test as mt, expect as me, afterEach as ma } from 'bun:test'
+import { makeClient as mkClient } from '../../src/api/client'
+
+const savedFetch = globalThis.fetch
+ma(() => { globalThis.fetch = savedFetch })
+
+mt('mutate posts ops and returns applied counts', async () => {
+  let captured: { url: string; body: unknown } | null = null
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    captured = { url: String(url), body: JSON.parse(String(init?.body)) }
+    return new Response(JSON.stringify({ ok: true, applied: { updated: 1, inserted: 0, deleted: 0 } }), { status: 200, headers: { 'content-type': 'application/json' } })
+  }) as typeof fetch
+
+  const client = mkClient('http://x', 'tok')
+  const ops = { updates: [{ pk: { id: 1 }, set: { name: 'a' } }], inserts: [], deletes: [] }
+  const res = await client.mutate('main', 'users', ops)
+  me(res.applied.updated).toBe(1)
+  me(captured!.url).toBe('http://x/data/mutate')
+  me(captured!.body).toEqual({ connectionId: 'main', table: 'users', ops })
+})

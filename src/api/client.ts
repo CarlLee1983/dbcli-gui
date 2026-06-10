@@ -6,6 +6,9 @@ import type {
   ConnectionFormInput,
   ConnectionDetail,
   TestResult,
+  MutateOps,
+  MutateResult,
+  Permission,
 } from './types'
 import { saveFile } from './save-file'
 
@@ -51,7 +54,7 @@ function filenameFromDisposition(header: string | null, fallback: string): strin
 export interface DbClient {
   health(): Promise<{ ok: boolean; version: string }>
   listConnections(): Promise<{ connections: ConnectionSummary[] }>
-  openConnection(id: string): Promise<{ ok: boolean; system: string }>
+  openConnection(id: string): Promise<{ ok: boolean; system: string; permission: Permission }>
   closeConnection(id: string): Promise<{ ok: boolean }>
   query(id: string, sql: string, limit?: number): Promise<QueryResultDto>
   schemaTree(id: string): Promise<{ tables: TreeTable[] }>
@@ -63,6 +66,7 @@ export interface DbClient {
   setDefaultConnection(name: string): Promise<{ ok: boolean }>
   testConnection(input: Omit<ConnectionFormInput, 'name'>): Promise<TestResult>
   getConnection(name: string): Promise<ConnectionDetail>
+  mutate(id: string, table: string, ops: MutateOps): Promise<MutateResult>
 }
 
 export function makeClient(base: string, token: string): DbClient {
@@ -97,7 +101,7 @@ export function makeClient(base: string, token: string): DbClient {
   return {
     health: () => get('/health') as Promise<{ ok: boolean; version: string }>,
     listConnections: () => post('/connections/list', {}) as Promise<{ connections: ConnectionSummary[] }>,
-    openConnection: (id) => post('/connections/open', { connectionId: id }) as Promise<{ ok: boolean; system: string }>,
+    openConnection: (id) => post('/connections/open', { connectionId: id }) as Promise<{ ok: boolean; system: string; permission: Permission }>,
     closeConnection: (id) => post('/connections/close', { connectionId: id }) as Promise<{ ok: boolean }>,
     query: (id, sql, limit) =>
       post('/query', { connectionId: id, sql, ...(limit !== undefined ? { limit } : {}) }) as Promise<QueryResultDto>,
@@ -112,6 +116,7 @@ export function makeClient(base: string, token: string): DbClient {
     setDefaultConnection: (name) => post('/connections/set-default', { name }) as Promise<{ ok: boolean }>,
     testConnection: (input) => post('/connections/test', input) as Promise<TestResult>,
     getConnection: (name) => get(`/connections/get?name=${encodeURIComponent(name)}`) as Promise<ConnectionDetail>,
+    mutate: (id, table, ops) => post('/data/mutate', { connectionId: id, table, ops }) as Promise<MutateResult>,
     exportRows: async (id, sql, format) => {
       const res = await fetch(`${base}/export`, {
         method: 'POST',

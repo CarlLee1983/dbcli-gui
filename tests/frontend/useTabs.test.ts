@@ -9,7 +9,7 @@ function fakeClient(over: Partial<DbClient> = {}): DbClient {
   return {
     health: async () => ({ ok: true, version: '0.1.0' }),
     listConnections: async () => ({ connections: [] }),
-    openConnection: async () => ({ ok: true, system: 'postgresql' }),
+    openConnection: async () => ({ ok: true, system: 'postgresql', permission: 'query-only' as const }),
     closeConnection: async () => ({ ok: true }),
     query: async () => ({ rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 2 }),
     schemaTree: async () => ({ tables: [] }),
@@ -21,6 +21,7 @@ function fakeClient(over: Partial<DbClient> = {}): DbClient {
     setDefaultConnection: async () => ({ ok: true }),
     testConnection: async () => ({ ok: true, ms: 0 }),
     getConnection: async () => ({ name: '', system: 'mysql', host: '', port: 0, user: '', database: '' }),
+    mutate: async () => ({ ok: true, applied: { updated: 0, inserted: 0, deleted: 0 } }),
     ...over,
   }
 }

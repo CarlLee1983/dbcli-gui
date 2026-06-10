@@ -55,3 +55,16 @@ export interface ConnectionDetail {
 }
 
 export interface TestResult { ok: boolean; ms: number }
+
+export type Permission = 'query-only' | 'read-write' | 'data-admin' | 'admin'
+
+export interface MutateOps {
+  updates: Array<{ pk: Record<string, unknown>; set: Record<string, unknown> }>
+  inserts: Array<{ values: Record<string, unknown> }>
+  deletes: Array<{ pk: Record<string, unknown> }>
+}
+
+export interface MutateResult {
+  ok: boolean
+  applied: { updated: number; inserted: number; deleted: number }
+}
