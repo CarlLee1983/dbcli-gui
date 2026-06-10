@@ -8,8 +8,11 @@ import { json } from '../http'
 /** Optimistic-concurrency violation: an update/delete matched != 1 row. */
 class ConflictError extends Error {}
 
+// mariadb shares MySQL's dialect (backtick identifiers, `?` placeholders).
 function dialectFor(system: string): 'postgresql' | 'mysql' {
-  return system === 'postgresql' ? 'postgresql' : 'mysql'
+  if (system === 'postgresql') return 'postgresql'
+  if (system === 'mysql' || system === 'mariadb') return 'mysql'
+  throw new Error(`Unsupported system for data mutations: ${system}`)
 }
 
 export function makeDataHandlers(pool: ConnectionPool) {

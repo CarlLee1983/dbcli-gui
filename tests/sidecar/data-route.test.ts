@@ -102,3 +102,11 @@ test('mutate on unopened connection returns 409 NOT_OPEN', async () => {
   expect(res.status).toBe(409)
   expect((await res.json() as { error: { code: string } }).error.code).toBe('NOT_OPEN')
 })
+
+test('empty ops returns 400 BAD_REQUEST', async () => {
+  const { server: s, calls } = start(cfg())
+  await post(s, '/connections/open', { connectionId: 'main' })
+  const res = await post(s, '/data/mutate', { connectionId: 'main', table: 'users', ops: {} })
+  expect(res.status).toBe(400)
+  expect(calls).not.toContain('BEGIN')
+})
