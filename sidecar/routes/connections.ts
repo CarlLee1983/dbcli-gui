@@ -18,7 +18,11 @@ export function makeConnectionHandlers(pool: ConnectionPool) {
       if (!parsed.success) return json({ error: { code: 'BAD_REQUEST', message: 'connectionId required' } }, 400)
       try {
         const entry = await pool.open(parsed.data.connectionId)
-        return json({ ok: true, system: (entry.config.connection as { system: string }).system })
+        return json({
+          ok: true,
+          system: (entry.config.connection as { system: string }).system,
+          permission: (entry.config as { permission?: string }).permission ?? 'query-only',
+        })
       } catch (err) {
         const body = toErrorBody(err)
         return json(body, statusForCode(body.error.code))

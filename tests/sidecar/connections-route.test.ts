@@ -73,3 +73,24 @@ test('POST /connections/open maps a ConnectionError to 502 CONNECTION', async ()
   expect(res.status).toBe(502)
   expect((await res.json() as { error: { code: string } }).error.code).toBe('CONNECTION')
 })
+
+import { test as openTest, expect as openExpect } from 'bun:test'
+import { createServer as mkServer } from '../../sidecar/server'
+import { ConnectionPool as Pool } from '../../sidecar/connection-pool'
+import type { DbcliConfig as Cfg } from '@carllee1983/dbcli/core'
+
+openTest('open returns the connection permission', async () => {
+  const config = { connection: { system: 'mysql' }, permission: 'read-write' } as unknown as Cfg
+  const pool = new Pool({ loadConfig: async () => config, openAdapter: () => ({ connect: async () => {}, disconnect: async () => {} }) as never })
+  const s = mkServer({ pool, token: 't', port: 0, dbcliPath: '/tmp/dbcli-gui-unused' })
+  try {
+    const res = await fetch(`http://localhost:${s.port}/connections/open`, {
+      method: 'POST', headers: { authorization: 'Bearer t', 'content-type': 'application/json' },
+      body: JSON.stringify({ connectionId: 'main' }),
+    })
+    openExpect(res.status).toBe(200)
+    openExpect(await res.json()).toEqual({ ok: true, system: 'mysql', permission: 'read-write' })
+  } finally {
+    await s.stop(true)
+  }
+})
