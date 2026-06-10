@@ -65,3 +65,15 @@ export const MutateBody = z.object({
 })
 
 export type MutateBody = z.infer<typeof MutateBody>
+
+export const WorkspaceSchema = z.object({
+  id: z.string().min(1),
+  label: z.string(),
+  kind: z.enum(['global', 'project']),
+  path: z.string().min(1),
+})
+export const WorkspacesFileSchema = z.object({
+  version: z.literal(1),
+  lastActiveId: z.string().min(1),
+  workspaces: z.array(WorkspaceSchema),
+})

@@ -2,8 +2,11 @@ import { test, expect } from 'bun:test'
 import {
   GLOBAL_ID, defaultWorkspacesFile, listWorkspaces, addWorkspace,
   removeWorkspace, setLastActive, resolvePath, makeProjectWorkspace,
+  WorkspaceRegistry,
   type Workspace,
 } from '../../sidecar/workspaces'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 
 const G = '/home/u/.dbcli'
 
@@ -50,4 +53,28 @@ test('makeProjectWorkspace:label 預設取資料夾名、path 指向 .dbcli、id
   expect(a.kind).toBe('project')
   const b = makeProjectWorkspace('/Users/me/shop')
   expect(a.id).not.toBe(b.id)
+})
+
+test('WorkspaceRegistry:add→persist→reload 還原', async () => {
+  const dir = join(tmpdir(), `dbcli-ws-${crypto.randomUUID()}`)
+  const reg = await WorkspaceRegistry.load(dir)
+  const ws = await reg.add('/some/proj')
+  await reg.setLastActive(ws.id)
+
+  const reloaded = await WorkspaceRegistry.load(dir)
+  expect(reloaded.activeId()).toBe(ws.id)
+  expect(reloaded.list().map((w) => w.id)).toContain(ws.id)
+  expect(reloaded.resolvePath(ws.id)).toBe('/some/proj/.dbcli')
+
+  await reloaded.remove(ws.id)
+  expect((await WorkspaceRegistry.load(dir)).activeId()).toBe('global')
+})
+
+test('WorkspaceRegistry.load:檔案毀損→退回僅 global', async () => {
+  const dir = join(tmpdir(), `dbcli-ws-${crypto.randomUUID()}`)
+  await Bun.$`mkdir -p ${dir}`
+  await Bun.write(join(dir, 'workspaces.json'), '{ not json')
+  const reg = await WorkspaceRegistry.load(dir)
+  expect(reg.list()).toHaveLength(1)
+  expect(reg.activeId()).toBe('global')
 })
