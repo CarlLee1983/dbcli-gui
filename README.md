@@ -56,6 +56,13 @@ write SQL → result grid → export. `query-only` permission. macOS Apple Silic
 - **標題列 workspace 切換**:下拉可在「全域」與手動加入的專案間即時切換;切換時 sidecar 關閉舊連線、用新設定庫重建連線池(`server.reload`),前端重置連線/schema/分頁狀態。
 - **手動管理清單**:「加入 workspace…」選資料夾(Tauri folder dialog),清單與上次選用記於 `~/.dbcli/workspaces.json`(原子寫),啟動還原。
 
+## v2 ‧ 表格多頁籤
+
+- **開啟方式**：點側欄資料表名稱即開一個「表分頁」，內含五個子頁籤：**結構**（欄位清單）、**內容**（可編輯資料列）、**關聯**（FK 正向＋反向）、**觸發器**、**資訊**（引擎/大小/建立 SQL 等後設資料）。側欄鉛筆圖示則直接跳入**內容**子頁籤。
+- **開新查詢**：表分頁工具列的「以此表開新查詢」按鈕，會開一個預填 `SELECT * FROM <表>` 的新查詢分頁。
+- **延遲載入與快取**：關聯、觸發器、資訊三個子頁籤在首次切入時才向 sidecar 取資料，結果快取於該分頁 session；重新整理或切換連線後清除。
+- **範圍**：關聯、觸發器、資訊僅支援 SQL 系統（MySQL / MariaDB / PostgreSQL）；結構與內容在所有支援系統皆可使用。
+
 ## Build order
 
 1. **Bun sidecar** (engine + local HTTP API) — independently testable with `bun test`. ✓ done

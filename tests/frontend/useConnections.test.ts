@@ -49,14 +49,6 @@ test('selectConnection opens it and loads the schema tree', async () => {
   expect(result.current.tree.length).toBe(1)
 })
 
-test('loadTableColumns populates expandedColumns', async () => {
-  const { result } = renderHook(() => useConnections(fakeClient()))
-  await waitFor(() => expect(result.current.online).toBe(true))
-  await act(async () => { await result.current.selectConnection('a') })
-  await act(async () => { await result.current.loadTableColumns('t') })
-  expect(result.current.expandedColumns['t']?.[0]?.name).toBe('id')
-})
-
 test('health failure marks offline', async () => {
   const { result } = renderHook(() => useConnections(fakeClient({ health: async () => { throw new Error('down') } })))
   await waitFor(() => expect(result.current.online).toBe(false))
