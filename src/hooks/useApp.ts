@@ -3,6 +3,7 @@ import { client as defaultClient, ApiError, type DbClient } from '../api/client'
 import { useConnections, toApiError, type ConnectionsApi } from './useConnections'
 import { useHistory, type HistoryApi } from './useHistory'
 import { useTabs, type TabsApi } from './useTabs'
+import { useWorkspaces, type WorkspacesApi } from './useWorkspaces'
 import { detectSingleTable, resultIsEditable } from './single-table'
 import type { MutateOps } from '../api/types'
 
@@ -10,17 +11,20 @@ export interface AppApi {
   connections: ConnectionsApi
   history: HistoryApi
   tabs: TabsApi
+  workspaces: WorkspacesApi
   saving: boolean
   exportResult(format: 'csv' | 'json'): Promise<void>
   browseTable(table: string): Promise<void>
   saveTableEdits(table: string, ops: MutateOps): Promise<boolean>
   editQueryResult(): Promise<void>
+  switchWorkspace(id: string): Promise<void>
 }
 
 export function useApp(client: DbClient = defaultClient): AppApi {
   const connections = useConnections(client)
   const history = useHistory()
   const tabs = useTabs({ client: connections.client, activeConnectionId: connections.activeConnectionId, onRecord: history.add })
+  const workspaces = useWorkspaces(connections.client)
   const [saving, setSaving] = useState(false)
 
   const exportResult = useCallback(async (format: 'csv' | 'json') => {
@@ -95,5 +99,15 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [connections, tabs.activeId, tabs.active.browse, tabs.setBrowseRows])
 
-  return { connections, history, tabs, saving, exportResult, browseTable, saveTableEdits, editQueryResult }
+  const switchWorkspace = useCallback(async (id: string) => {
+    try {
+      const conns = await workspaces.select(id)
+      connections.resetForWorkspace(conns)
+      tabs.resetAll()
+    } catch (err) {
+      connections.setError(toApiError(err))
+    }
+  }, [workspaces, connections, tabs])
+
+  return { connections, history, tabs, workspaces, saving, exportResult, browseTable, saveTableEdits, editQueryResult, switchWorkspace }
 }

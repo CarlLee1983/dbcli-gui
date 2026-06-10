@@ -27,6 +27,7 @@ export interface TabsApi {
   dismissError(): void
   openBrowse(browse: BrowseSession): void
   setBrowseRows(id: string, rows: Array<Record<string, unknown>>): void
+  resetAll(): void
 }
 
 export function useTabs(opts: UseTabsOpts): TabsApi {
@@ -55,6 +56,7 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
   const setActive = useCallback((id: string) => dispatch({ type: 'setActive', id }), [])
   const openBrowse = useCallback((browse: BrowseSession) => dispatch({ type: 'openBrowse', browse }), [])
   const setBrowseRows = useCallback((id: string, rows: Array<Record<string, unknown>>) => dispatch({ type: 'setBrowseRows', id, rows }), [])
+  const resetAll = useCallback(() => dispatch({ type: 'reset' }), [])
 
   const runQuery = useCallback(async () => {
     const { client, activeConnectionId, onRecord } = optsRef.current
@@ -87,6 +89,6 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
     sessions: state.sessions, activeId: state.activeId, active,
     openTab, closeTab, renameTab, setActive,
     setSql, loadSql, setSort, setResultFilter, runQuery, dismissError,
-    openBrowse, setBrowseRows,
+    openBrowse, setBrowseRows, resetAll,
   }
 }

@@ -26,6 +26,7 @@ export interface ConnectionsApi {
   setDefault(name: string): Promise<void>
   testConnection(input: Omit<ConnectionFormInput, 'name'>): Promise<TestResult>
   getConnection(name: string): Promise<ConnectionDetail>
+  resetForWorkspace(connections: ConnectionSummary[]): void
 }
 
 export function useConnections(client: DbClient = defaultClient): ConnectionsApi {
@@ -133,6 +134,15 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
     [],
   )
 
+  const resetForWorkspace = useCallback((next: ConnectionSummary[]) => {
+    setConnections(next)
+    setActiveConnectionId(null)
+    setTree([])
+    setExpandedColumns({})
+    setPermission(null)
+    setError(null)
+  }, [])
+
   return {
     online,
     connections,
@@ -153,5 +163,6 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
     setDefault,
     testConnection,
     getConnection,
+    resetForWorkspace,
   }
 }

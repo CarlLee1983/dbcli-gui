@@ -81,3 +81,16 @@ test('testConnection returns the result without touching the list', async () => 
   await act(async () => { r = await result.current.testConnection({ system: 'mysql', host: 'h', port: 3306, user: 'u', database: 'd' }) })
   expect(r).toEqual({ ok: true, ms: 9 })
 })
+
+test('resetForWorkspace 套用新連線清單並清空 active/tree/permission', async () => {
+  const { result } = renderHook(() => useConnections(fakeClient()))
+  await waitFor(() => expect(result.current.online).toBe(true))
+  act(() => {
+    result.current.resetForWorkspace([{ name: 'newc', system: 'mysql', isDefault: true }])
+  })
+  expect(result.current.connections.map((c) => c.name)).toEqual(['newc'])
+  expect(result.current.activeConnectionId).toBeNull()
+  expect(result.current.tree).toHaveLength(0)
+  expect(result.current.permission).toBeNull()
+  expect(result.current.error).toBeNull()
+})

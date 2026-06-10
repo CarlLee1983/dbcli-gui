@@ -66,6 +66,7 @@ export type TabsAction =
   | { type: 'patch'; id: string; patch: Partial<QuerySession> }
   | { type: 'openBrowse'; browse: BrowseSession }
   | { type: 'setBrowseRows'; id: string; rows: Array<Record<string, unknown>> }
+  | { type: 'reset' }
 
 export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
   switch (action.type) {
@@ -111,6 +112,12 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
             : s
         ),
       }
+    case 'reset': {
+      // 與 close-到-空 一致:延續 seq 避免分頁 id 回收重複。
+      const seq = state.seq + 1
+      const s = emptySession(seq)
+      return { sessions: [s], activeId: s.id, seq }
+    }
     default:
       return state
   }

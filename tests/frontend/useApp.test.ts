@@ -163,6 +163,33 @@ test('editQueryResult is a no-op when the active SQL is not a single-table SELEC
   expect(result.current.tabs.active.browse).toBeNull()
 })
 
+test('switchWorkspace:套用新連線清單並重置查詢分頁', async () => {
+  const client = fakeClient({
+    selectWorkspace: async () => ({ connections: [{ name: 'wc', system: 'mysql', isDefault: true }], activeId: 'p1' }),
+    listWorkspaces: async () => ({ workspaces: [{ id: 'global', label: '全域', kind: 'global' as const, path: '~/.dbcli' }], activeId: 'global' }),
+  })
+  const { result } = renderHook(() => useApp(client))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  act(() => { result.current.tabs.openTab() })
+  await act(async () => { await result.current.switchWorkspace('p1') })
+  expect(result.current.tabs.sessions).toHaveLength(1)
+  expect(result.current.connections.connections.map((c) => c.name)).toEqual(['wc'])
+  expect(result.current.connections.activeConnectionId).toBeNull()
+})
+
+test('switchWorkspace 失敗時不重置 connections/tabs，僅顯示錯誤', async () => {
+  const client = fakeClient({
+    selectWorkspace: async () => { throw new Error('boom') },
+  })
+  const { result } = renderHook(() => useApp(client))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  act(() => { result.current.tabs.openTab() })
+  const tabsBefore = result.current.tabs.sessions.length
+  await act(async () => { await result.current.switchWorkspace('p1') })
+  expect(result.current.tabs.sessions).toHaveLength(tabsBefore) // 未被重置
+  expect(result.current.connections.error).not.toBeNull()       // 錯誤已顯示
+})
+
 test('saveTableEdits refetches using the browse session stored SQL', async () => {
   const editableSchema = { name: 'users', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }], primaryKey: ['id'] }
   const queryCalls: string[] = []

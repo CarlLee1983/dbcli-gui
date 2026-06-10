@@ -57,3 +57,14 @@ test('ids are unique across open/close churn', () => {
   for (let i = 0; i < 5; i++) { s = tabsReducer(s, { type: 'open' }); ids.add(s.activeId) }
   expect(ids.size).toBe(6)
 })
+
+test('reset action 回到單一空白查詢分頁', () => {
+  let state = initTabs()
+  state = tabsReducer(state, { type: 'open' })
+  state = tabsReducer(state, { type: 'open' })
+  expect(state.sessions.length).toBe(3)
+  const reset = tabsReducer(state, { type: 'reset' })
+  expect(reset.sessions.length).toBe(1)
+  expect(reset.sessions[0]!.sql).toBe('')
+  expect(reset.sessions[0]!.browse).toBeNull()
+})
