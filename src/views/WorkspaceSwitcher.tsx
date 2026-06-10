@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Workspace } from '../api/types'
+import { inTauri } from '../api/tauri-env'
 
 interface Props {
   workspaces: Workspace[]
@@ -11,8 +12,7 @@ interface Props {
 
 /** 開資料夾選擇:Tauri 環境用 dialog plugin,dev(瀏覽器)退回 prompt。 */
 async function pickFolder(): Promise<string | null> {
-  const tauri = (globalThis as { __TAURI__?: unknown }).__TAURI__
-  if (tauri) {
+  if (inTauri()) {
     const { open } = await import('@tauri-apps/plugin-dialog')
     const picked = await open({ directory: true, multiple: false })
     return typeof picked === 'string' ? picked : null
@@ -25,8 +25,13 @@ export function WorkspaceSwitcher({ workspaces, activeId, onSelect, onAdd, onRem
   const active = workspaces.find((w) => w.id === activeId)
 
   const handleAdd = async () => {
-    const folder = await pickFolder()
-    if (folder) await onAdd(folder)
+    try {
+      const folder = await pickFolder()
+      if (folder) await onAdd(folder)
+    } catch (err) {
+      // 例如 Tauri 缺少 dialog:allow-open 權限時 open() 會 reject;別讓它變成無聲的 unhandled rejection。
+      console.error('加入 workspace 失敗:', err)
+    }
   }
 
   return (

@@ -7,14 +7,7 @@
  * - **Dev browser**: a transient `<a download>` anchor, which works normally there.
  */
 
-/** The Tauri shell injects `window.__DBCLI__`; `__TAURI_INTERNALS__` is always present
- *  inside a Tauri webview. Either signal means "use the native save path". */
-function inTauri(): boolean {
-  return (
-    typeof (globalThis as { __DBCLI__?: unknown }).__DBCLI__ !== 'undefined' ||
-    '__TAURI_INTERNALS__' in globalThis
-  )
-}
+import { inTauri } from './tauri-env'
 
 /** Browser fallback: download via a transient `<a download>` anchor. */
 function anchorDownload(filename: string, blob: Blob): void {

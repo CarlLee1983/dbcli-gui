@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main window: the native save dialog used by export. The app's own `write_export` command needs no permission (app commands are allowed by default).",
+  "description": "Permissions for the main window: the native save dialog used by export, and the open dialog used to pick a project folder when adding a workspace. The app's own `write_export` command needs no permission (app commands are allowed by default).",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-save"]
+  "permissions": ["core:default", "dialog:allow-save", "dialog:allow-open"]
 }
