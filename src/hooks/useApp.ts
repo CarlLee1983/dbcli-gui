@@ -37,12 +37,13 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     if (!connId) return
     try {
       const schema = await connections.client.schemaTable(connId, table)
+      // `table` is a server-enumerated identifier from the schema tree (not free user input).
       const result = await connections.client.query(connId, `SELECT * FROM ${table} LIMIT 200`)
       tabs.openBrowse({ table, schema, rows: result.rows })
     } catch (err) {
       connections.setError(toApiError(err))
     }
-  }, [connections, tabs])
+  }, [connections, tabs.openBrowse])
 
   const saveTableEdits = useCallback(async (table: string, ops: MutateOps) => {
     const connId = connections.activeConnectionId
@@ -51,6 +52,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     setSaving(true)
     try {
       await connections.client.mutate(connId, table, ops)
+      // `table` is a server-enumerated identifier from the schema tree (not free user input).
       const result = await connections.client.query(connId, `SELECT * FROM ${table} LIMIT 200`)
       tabs.setBrowseRows(tabId, result.rows)
     } catch (err) {
@@ -58,7 +60,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     } finally {
       setSaving(false)
     }
-  }, [connections, tabs])
+  }, [connections, tabs.activeId, tabs.setBrowseRows])
 
   return { connections, history, tabs, saving, exportResult, browseTable, saveTableEdits }
 }

@@ -69,6 +69,7 @@ export function useConnections(client: DbClient = defaultClient): ConnectionsApi
 
   const selectConnection = useCallback(async (id: string) => {
     setError(null)
+    setPermission(null)
     try {
       const opened = await clientRef.current.openConnection(id)
       const { tables } = await clientRef.current.schemaTree(id)
