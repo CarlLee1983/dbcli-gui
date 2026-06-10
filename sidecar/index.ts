@@ -1,17 +1,32 @@
 import { resolveSidecarConfig } from './config'
-import { ConnectionPool, defaultPoolDeps } from './connection-pool'
-import { defaultConnectionLister } from './routes/connections'
+import { WorkspaceRegistry, GLOBAL_ID } from './workspaces'
+import { buildStoreRuntime } from './active-store'
 import { createServer } from './server'
 
 if (import.meta.main) {
   const cfg = resolveSidecarConfig()
-  const pool = new ConnectionPool(defaultPoolDeps(cfg.dbcliPath))
+  const registry = await WorkspaceRegistry.load(cfg.globalDir)
+
+  // 還原上次的 workspace;路徑解析失敗(如專案已刪)→ 退回全域。
+  let activeId = registry.activeId()
+  let dbcliPath: string
+  try {
+    dbcliPath = registry.resolvePath(activeId)
+  } catch {
+    activeId = GLOBAL_ID
+    dbcliPath = cfg.globalDir
+    await registry.setLastActive(GLOBAL_ID)
+  }
+
+  const rt = buildStoreRuntime(dbcliPath)
   const server = createServer({
-    pool,
+    pool: rt.pool,
     token: cfg.token,
     port: cfg.port,
-    dbcliPath: cfg.dbcliPath,
-    listConnections: defaultConnectionLister(cfg.dbcliPath),
+    dbcliPath,
+    globalDir: cfg.globalDir,
+    registry,
+    listConnections: rt.lister,
   })
 
   // The Tauri shell (or a dev caller) reads this line to learn where to connect.
@@ -19,7 +34,7 @@ if (import.meta.main) {
 
   const shutdown = async () => {
     try {
-      await pool.closeAll()
+      await rt.pool.closeAll()
       await server.stop(true)
     } finally {
       process.exit(0)
