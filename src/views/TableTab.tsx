@@ -43,6 +43,9 @@ export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTa
   const selectTab = (key: SubTab) => {
     onSetSubTab(key)
     const lazy = LAZY[key]
+    // Intentionally not guarded on cacheErrors (unlike the effect above): a manual click on
+    // a sub-tab that previously errored should retry the fetch. The effect skips errored
+    // sub-tabs so a programmatic open doesn't auto-loop on a persistent failure.
     if (lazy && session[lazy] === undefined) onLoadSubTab(lazy)
   }
 

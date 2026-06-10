@@ -48,6 +48,8 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     try {
       const schema = await connections.client.schemaTable(connId, table)
       // `table` is a server-enumerated identifier from the schema tree (not free user input).
+      // LIMIT 200 mirrors the existing sidebar browse default (more rows to edit); the
+      // "以此表開新查詢" button deliberately uses LIMIT 100, matching the insert-select default.
       const sql = `SELECT * FROM ${table} LIMIT 200`
       // Content sub-tab needs rows up front so the browser renders immediately.
       const rows = subTab === 'content' ? (await connections.client.query(connId, sql)).rows : undefined
