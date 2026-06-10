@@ -40,8 +40,13 @@ export function makeWorkspaceHandlers(
       try {
         const wasActive = store.id === parsed.data.id
         await registry.remove(parsed.data.id)
-        if (wasActive) await selectWorkspace(GLOBAL_ID) // 切回全域,順帶 reload
-        return json({ workspaces: registry.list(), activeId: store.id })
+        // 若移除的是目前作用中 workspace,自動切回全域並取得新連線清單,一併回傳給前端重置。
+        const connections = wasActive ? await selectWorkspace(GLOBAL_ID) : null
+        return json({
+          workspaces: registry.list(),
+          activeId: store.id,
+          ...(connections ? { connections } : {}),
+        })
       } catch (err) {
         const body = toErrorBody(err)
         return json(body, statusForCode(body.error.code))

@@ -126,7 +126,7 @@ export function App() {
             activeId={workspaces.activeId}
             onSelect={app.switchWorkspace}
             onAdd={workspaces.add}
-            onRemove={workspaces.remove}
+            onRemove={app.removeWorkspace}
           />
         </div>
 

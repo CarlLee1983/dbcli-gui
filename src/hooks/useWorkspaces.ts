@@ -10,7 +10,8 @@ export interface WorkspacesApi {
   error: ApiError | null
   refresh(): Promise<void>
   add(path: string, label?: string): Promise<void>
-  remove(id: string): Promise<void>
+  /** 移除 workspace。若移除的是目前作用中的 workspace,伺服器自動切回全域,此時回傳新連線清單;否則回傳 null。 */
+  remove(id: string): Promise<ConnectionSummary[] | null>
   /** 切換成功回傳新 workspace 的連線清單，供呼叫端套用 + 重置狀態。 */
   select(id: string): Promise<ConnectionSummary[]>
 }
@@ -46,13 +47,15 @@ export function useWorkspaces(client: DbClient = defaultClient): WorkspacesApi {
     }
   }, [])
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (id: string): Promise<ConnectionSummary[] | null> => {
     try {
-      const { workspaces, activeId } = await clientRef.current.removeWorkspace(id)
+      const { workspaces, activeId, connections } = await clientRef.current.removeWorkspace(id)
       setWorkspaces(workspaces)
       setActiveId(activeId)
+      return connections ?? null
     } catch (err) {
       setError(toApiError(err))
+      return null
     }
   }, [])
 

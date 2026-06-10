@@ -56,12 +56,25 @@ test('remove global → 400', async () => {
   expect(res.status).toBe(400)
 })
 
-test('remove 目前 active 專案 → 自動切回 global', async () => {
+test('remove 目前 active 專案 → 自動切回 global 並回傳 connections', async () => {
   const { registry, store, selectWorkspace, selected } = await setup()
   const h = makeWorkspaceHandlers(registry, store, selectWorkspace)
   const added = await (await h.add(req({ path: '/proj' }))).json() as { added: { id: string } }
   store.id = added.added.id
   await registry.setLastActive(added.added.id)
-  await h.remove(req({ id: added.added.id }))
+  const res = await h.remove(req({ id: added.added.id }))
+  const body = await res.json() as { activeId: string; connections?: unknown[] }
   expect(selected).toContain('global')
+  expect(Array.isArray(body.connections)).toBe(true)
+})
+
+test('remove 非 active 專案 → 不回傳 connections', async () => {
+  const { registry, store, selectWorkspace } = await setup()
+  const h = makeWorkspaceHandlers(registry, store, selectWorkspace)
+  // store.id 維持 'global',移除另一個專案
+  const added = await (await h.add(req({ path: '/other' }))).json() as { added: { id: string } }
+  const res = await h.remove(req({ id: added.added.id }))
+  const body = await res.json() as { activeId: string; connections?: unknown[] }
+  expect(body.activeId).toBe('global')
+  expect(body.connections).toBeUndefined()
 })

@@ -190,6 +190,42 @@ test('switchWorkspace 失敗時不重置 connections/tabs，僅顯示錯誤', as
   expect(result.current.connections.error).not.toBeNull()       // 錯誤已顯示
 })
 
+test('removeWorkspace 移除作用中 workspace → 重置 connections + 分頁', async () => {
+  const client = fakeClient({
+    removeWorkspace: async () => ({
+      workspaces: [{ id: 'global', label: '全域', kind: 'global' as const, path: '~/.dbcli' }],
+      activeId: 'global',
+      connections: [{ name: 'gc', system: 'mysql', isDefault: true }],
+    }),
+  })
+  const { result } = renderHook(() => useApp(client))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  act(() => { result.current.tabs.openTab() })
+  await act(async () => { await result.current.removeWorkspace('p1') })
+  expect(result.current.tabs.sessions).toHaveLength(1)
+  expect(result.current.connections.connections.map((c) => c.name)).toEqual(['gc'])
+})
+
+test('removeWorkspace 移除非作用中 workspace → 不重置 connections + 分頁', async () => {
+  const client = fakeClient({
+    removeWorkspace: async () => ({
+      workspaces: [{ id: 'global', label: '全域', kind: 'global' as const, path: '~/.dbcli' }],
+      activeId: 'global',
+      // 無 connections 欄位:非作用中 workspace 移除,不觸發重置
+    }),
+    listConnections: async () => ({ connections: [{ name: 'a', system: 'postgresql', isDefault: true }] }),
+  })
+  const { result } = renderHook(() => useApp(client))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  act(() => { result.current.tabs.openTab() })
+  const tabsBefore = result.current.tabs.sessions.length
+  await act(async () => { await result.current.removeWorkspace('other') })
+  // 分頁未被重置
+  expect(result.current.tabs.sessions).toHaveLength(tabsBefore)
+  // 連線清單維持原本的 'a'
+  expect(result.current.connections.connections.map((c) => c.name)).toEqual(['a'])
+})
+
 test('saveTableEdits refetches using the browse session stored SQL', async () => {
   const editableSchema = { name: 'users', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }], primaryKey: ['id'] }
   const queryCalls: string[] = []

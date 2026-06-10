@@ -18,6 +18,7 @@ export interface AppApi {
   saveTableEdits(table: string, ops: MutateOps): Promise<boolean>
   editQueryResult(): Promise<void>
   switchWorkspace(id: string): Promise<void>
+  removeWorkspace(id: string): Promise<void>
 }
 
 export function useApp(client: DbClient = defaultClient): AppApi {
@@ -109,5 +110,15 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [workspaces, connections, tabs])
 
-  return { connections, history, tabs, workspaces, saving, exportResult, browseTable, saveTableEdits, editQueryResult, switchWorkspace }
+  const removeWorkspace = useCallback(async (id: string) => {
+    // 若移除的是目前作用中的 workspace,伺服器會自動切回全域並回傳新連線清單;
+    // 前端需同步重置 connections/schema/分頁,與 switchWorkspace 一致。
+    const conns = await workspaces.remove(id)
+    if (conns) {
+      connections.resetForWorkspace(conns)
+      tabs.resetAll()
+    }
+  }, [workspaces, connections, tabs])
+
+  return { connections, history, tabs, workspaces, saving, exportResult, browseTable, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
 }

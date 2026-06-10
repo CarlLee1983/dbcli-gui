@@ -70,7 +70,7 @@ export interface DbClient {
   mutate(id: string, table: string, ops: MutateOps): Promise<MutateResult>
   listWorkspaces(): Promise<{ workspaces: Workspace[]; activeId: string }>
   addWorkspace(path: string, label?: string): Promise<{ workspaces: Workspace[]; added: Workspace }>
-  removeWorkspace(id: string): Promise<{ workspaces: Workspace[]; activeId: string }>
+  removeWorkspace(id: string): Promise<{ workspaces: Workspace[]; activeId: string; connections?: ConnectionSummary[] }>
   selectWorkspace(id: string): Promise<{ connections: ConnectionSummary[]; activeId: string }>
 }
 
@@ -124,7 +124,7 @@ export function makeClient(base: string, token: string): DbClient {
     mutate: (id, table, ops) => post('/data/mutate', { connectionId: id, table, ops }) as Promise<MutateResult>,
     listWorkspaces: () => post('/workspaces/list', {}) as Promise<{ workspaces: Workspace[]; activeId: string }>,
     addWorkspace: (path, label) => post('/workspaces/add', { path, ...(label ? { label } : {}) }) as Promise<{ workspaces: Workspace[]; added: Workspace }>,
-    removeWorkspace: (id) => post('/workspaces/remove', { id }) as Promise<{ workspaces: Workspace[]; activeId: string }>,
+    removeWorkspace: (id) => post('/workspaces/remove', { id }) as Promise<{ workspaces: Workspace[]; activeId: string; connections?: ConnectionSummary[] }>,
     selectWorkspace: (id) => post('/workspace/select', { id }) as Promise<{ connections: ConnectionSummary[]; activeId: string }>,
     exportRows: async (id, sql, format) => {
       const res = await fetch(`${base}/export`, {
