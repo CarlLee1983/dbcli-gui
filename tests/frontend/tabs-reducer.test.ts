@@ -128,3 +128,10 @@ test('openTableTab 重新聚焦(structure)不清掉既有內容列', () => {
   expect(active.table?.subTab).toBe('structure')
   expect(active.table?.rows).toEqual([{ id: 1 }])
 })
+
+test('open with sql prefills the new tab', () => {
+  const s = tabsReducer(initTabs(), { type: 'open', sql: 'SELECT * FROM orders LIMIT 100' })
+  const active = s.sessions.find((x) => x.id === s.activeId)!
+  expect(active.sql).toBe('SELECT * FROM orders LIMIT 100')
+  expect(active.table).toBeNull()
+})

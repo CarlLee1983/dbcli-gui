@@ -70,7 +70,7 @@ export function initTabs(): TabsState {
 }
 
 export type TabsAction =
-  | { type: 'open' }
+  | { type: 'open'; sql?: string }
   | { type: 'close'; id: string }
   | { type: 'rename'; id: string; title: string }
   | { type: 'setActive'; id: string }
@@ -98,7 +98,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
   switch (action.type) {
     case 'open': {
       const seq = state.seq + 1
-      const s = emptySession(seq)
+      const s = { ...emptySession(seq), sql: action.sql ?? '' }
       return { sessions: [...state.sessions, s], activeId: s.id, seq }
     }
     case 'close': {

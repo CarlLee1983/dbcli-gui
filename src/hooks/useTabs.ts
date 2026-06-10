@@ -18,6 +18,7 @@ export interface TabsApi {
   active: QuerySession
   getSession(id: string): QuerySession | undefined
   openTab(): void
+  openQuery(sql: string): void
   closeTab(id: string): void
   renameTab(id: string, title: string): void
   setActive(id: string): void
@@ -57,6 +58,7 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
 
   const getSession = useCallback((id: string) => stateRef.current.sessions.find((s) => s.id === id), [])
   const openTab = useCallback(() => dispatch({ type: 'open' }), [])
+  const openQuery = useCallback((sql: string) => dispatch({ type: 'open', sql }), [])
   const closeTab = useCallback((id: string) => dispatch({ type: 'close', id }), [])
   const renameTab = useCallback((id: string, title: string) => dispatch({ type: 'rename', id, title }), [])
   const setActive = useCallback((id: string) => dispatch({ type: 'setActive', id }), [])
@@ -96,7 +98,7 @@ export function useTabs(opts: UseTabsOpts): TabsApi {
 
   return {
     sessions: state.sessions, activeId: state.activeId, active, getSession,
-    openTab, closeTab, renameTab, setActive,
+    openTab, openQuery, closeTab, renameTab, setActive,
     setSql, loadSql, setSort, setResultFilter, runQuery, dismissError,
     openTableTab, setTableRows, setSubTab, setTableCache, setSubTabError, resetAll,
   }

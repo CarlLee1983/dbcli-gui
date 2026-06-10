@@ -2,7 +2,7 @@ import { test, expect, afterEach } from 'bun:test'
 import { mock } from 'bun:test'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { Sidebar } from '../../src/views/Sidebar'
-import type { ConnectionSummary, TreeTable, TableColumnDto } from '../../src/api/types'
+import type { ConnectionSummary, TreeTable } from '../../src/api/types'
 
 afterEach(cleanup)
 
@@ -11,23 +11,20 @@ const connections: ConnectionSummary[] = [
   { name: 'staging', system: 'mysql', isDefault: false },
 ]
 const tree: TreeTable[] = [{ name: 'users', type: 'table' }, { name: 'v_active', type: 'view' }]
-const expanded: Record<string, TableColumnDto[]> = { users: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }] }
 
 function setup(over: Partial<React.ComponentProps<typeof Sidebar>> = {}) {
-  const calls = { select: [] as string[], load: [] as string[], insert: [] as string[] }
+  const calls = { select: [] as string[], insert: [] as string[], open: [] as Array<[string, string]> }
   render(
     <Sidebar
       connections={connections}
       activeConnectionId="prod"
       tree={tree}
-      expandedColumns={expanded}
       onSelectConnection={(id) => calls.select.push(id)}
-      onLoadColumns={(t) => calls.load.push(t)}
       onInsertSelect={(t) => calls.insert.push(t)}
       onAddConnection={() => {}}
       onEditConnection={() => {}}
       onDeleteConnection={() => {}}
-      onBrowseTable={() => {}}
+      onOpenTable={(t, sub) => calls.open.push([t, sub])}
       {...over}
     />,
   )
@@ -52,16 +49,16 @@ test('renders the schema tree tables', () => {
   expect(screen.getByText('v_active')).toBeDefined()
 })
 
-test('clicking a table loads its columns', () => {
+test('clicking a table name opens its table tab (structure)', () => {
   const calls = setup()
   fireEvent.click(screen.getByText('v_active'))
-  expect(calls.load).toEqual(['v_active'])
+  expect(calls.open).toContainEqual(['v_active', 'structure'])
 })
 
-test('expanded columns are shown with a PK marker', () => {
-  setup()
-  expect(screen.getByText('id')).toBeDefined()
-  expect(screen.getByText(/PK/)).toBeDefined()
+test('clicking the pencil opens the table tab in content mode', () => {
+  const calls = setup()
+  fireEvent.click(screen.getByRole('button', { name: '編輯資料 users' }))
+  expect(calls.open).toContainEqual(['users', 'content'])
 })
 
 test('renders the 預設 badge for the default connection', () => {
@@ -85,9 +82,9 @@ test('typing in the schema search box filters the table list', () => {
 test('header + button triggers onAddConnection', () => {
   const onAdd = mock(() => {})
   render(<Sidebar connections={[{ name: 'primary', system: 'mysql', isDefault: true }]}
-    activeConnectionId={null} tree={[]} expandedColumns={{}}
-    onSelectConnection={() => {}} onLoadColumns={() => {}} onInsertSelect={() => {}}
-    onAddConnection={onAdd} onEditConnection={() => {}} onDeleteConnection={() => {}} onBrowseTable={() => {}} />)
+    activeConnectionId={null} tree={[]}
+    onSelectConnection={() => {}} onInsertSelect={() => {}}
+    onAddConnection={onAdd} onEditConnection={() => {}} onDeleteConnection={() => {}} onOpenTable={() => {}} />)
   fireEvent.click(screen.getByRole('button', { name: '新增連線' }))
   expect(onAdd).toHaveBeenCalledTimes(1)
 })
@@ -95,9 +92,9 @@ test('header + button triggers onAddConnection', () => {
 test('per-connection edit / delete buttons fire with the name', () => {
   const onEdit = mock((_: string) => {}); const onDelete = mock((_: string) => {})
   render(<Sidebar connections={[{ name: 'primary', system: 'mysql', isDefault: true }]}
-    activeConnectionId={null} tree={[]} expandedColumns={{}}
-    onSelectConnection={() => {}} onLoadColumns={() => {}} onInsertSelect={() => {}}
-    onAddConnection={() => {}} onEditConnection={onEdit} onDeleteConnection={onDelete} onBrowseTable={() => {}} />)
+    activeConnectionId={null} tree={[]}
+    onSelectConnection={() => {}} onInsertSelect={() => {}}
+    onAddConnection={() => {}} onEditConnection={onEdit} onDeleteConnection={onDelete} onOpenTable={() => {}} />)
   fireEvent.click(screen.getByRole('button', { name: '編輯連線 primary' }))
   fireEvent.click(screen.getByRole('button', { name: '刪除連線 primary' }))
   expect(onEdit).toHaveBeenCalledWith('primary')
