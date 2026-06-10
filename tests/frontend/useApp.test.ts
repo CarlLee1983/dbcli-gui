@@ -286,3 +286,18 @@ test('saveTableEdits refetches using the browse session stored SQL', async () =>
   await act(async () => { await result.current.saveTableEdits('users', { updates: [], inserts: [], deletes: [] }) })
   expect(queryCalls).toEqual(['SELECT id, name FROM users WHERE id < 5'])
 })
+
+test('loadSubTab dedupes concurrent in-flight fetches', async () => {
+  let calls = 0
+  const { result } = renderHook(() => useApp(fakeClient({
+    tableTriggers: async () => { calls++; await Promise.resolve(); return [] },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'structure') })
+  const id = result.current.tabs.activeId
+  await act(async () => {
+    await Promise.all([result.current.loadSubTab(id, 'triggers'), result.current.loadSubTab(id, 'triggers')])
+  })
+  expect(calls).toBe(1)
+})

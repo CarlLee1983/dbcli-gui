@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { client as defaultClient, ApiError, type DbClient } from '../api/client'
 import { useConnections, toApiError, type ConnectionsApi } from './useConnections'
 import { useHistory, type HistoryApi } from './useHistory'
@@ -29,6 +29,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
   const tabs = useTabs({ client: connections.client, activeConnectionId: connections.activeConnectionId, onRecord: history.add })
   const workspaces = useWorkspaces(connections.client)
   const [saving, setSaving] = useState(false)
+  const inFlight = useRef<Set<string>>(new Set())
 
   const exportResult = useCallback(async (format: 'csv' | 'json') => {
     const connId = connections.activeConnectionId
@@ -64,6 +65,9 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     const t = session?.table
     if (!connId || !t) return
     if (t[key] !== undefined) return // cache hit; a prior error leaves t[key] undefined → revisiting retries
+    const flightKey = `${tabId}:${key}`
+    if (inFlight.current.has(flightKey)) return // a fetch for this sub-tab is already running
+    inFlight.current.add(flightKey)
     try {
       const value =
         key === 'triggers' ? await connections.client.tableTriggers(connId, t.table)
@@ -73,6 +77,8 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     } catch (err) {
       const e = toApiError(err)
       tabs.setSubTabError(tabId, key, { code: e.code, message: e.message, status: e.status })
+    } finally {
+      inFlight.current.delete(flightKey)
     }
   }, [connections, tabs.getSession, tabs.setTableCache, tabs.setSubTabError])
 
