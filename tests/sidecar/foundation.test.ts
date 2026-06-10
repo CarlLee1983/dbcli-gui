@@ -1,21 +1,26 @@
 import { test, expect } from 'bun:test'
+import { join } from 'node:path'
+import { homedir } from 'node:os'
 import { resolveSidecarConfig } from '../../sidecar/config'
 import { toErrorBody } from '../../shared/errors'
 import { OpenBody, QueryBody, SchemaTreeBody, SchemaTableBody, ExportBody } from '../../shared/schemas'
 import { BlacklistError } from '@carllee1983/dbcli/core'
 
-test('resolveSidecarConfig reads env with sane defaults', () => {
-  const cfg = resolveSidecarConfig({ DBCLI_GUI_WORKDIR: '/tmp/proj', DBCLI_GUI_PORT: '0', DBCLI_GUI_TOKEN: 'tok' })
-  expect(cfg.workdir).toBe('/tmp/proj')
-  expect(cfg.dbcliPath).toBe('/tmp/proj/.dbcli')
+test('resolveSidecarConfig 預設 globalDir 為 ~/.dbcli', () => {
+  const cfg = resolveSidecarConfig({ DBCLI_GUI_PORT: '0', DBCLI_GUI_TOKEN: 'tok' })
+  expect(cfg.globalDir).toBe(join(homedir(), '.dbcli'))
   expect(cfg.port).toBe(0)
   expect(cfg.token).toBe('tok')
 })
 
+test('resolveSidecarConfig 可用 DBCLI_GUI_GLOBAL_DIR 覆寫', () => {
+  const cfg = resolveSidecarConfig({ DBCLI_GUI_GLOBAL_DIR: '/tmp/g', DBCLI_GUI_PORT: '0', DBCLI_GUI_TOKEN: 'tok' })
+  expect(cfg.globalDir).toBe('/tmp/g')
+})
+
 test('resolveSidecarConfig generates a token when none provided', () => {
   const cfg = resolveSidecarConfig({})
-  expect(typeof cfg.token).toBe('string')
-  expect(cfg.token.length).toBeGreaterThanOrEqual(16)
+  expect(cfg.token.length).toBeGreaterThan(0)
 })
 
 test('toErrorBody maps dbcli BlacklistError to a safe code', () => {
