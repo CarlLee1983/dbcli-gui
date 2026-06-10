@@ -366,7 +366,7 @@ import { BlacklistManager, BlacklistError } from '@carllee1983/dbcli/core'
 import type { ConnectionPool } from '../connection-pool'
 import { SchemaTableBody } from '../../shared/schemas'
 import { toErrorBody, statusForCode } from '../../shared/errors'
-import { dialectFor } from '../dialect'
+import { tableDialectFor } from '../dialect'
 import { json } from '../http'
 
 interface RelationRef {
@@ -389,7 +389,7 @@ async function resolve(pool: ConnectionPool, req: Request) {
     return { error: json(body, statusForCode(body.error.code)) }
   }
   const system = (entry.config.connection as { system: string }).system
-  return { entry, table: parsed.data.table, dialect: dialectFor(system) }
+  return { entry, table: parsed.data.table, dialect: tableDialectFor(system) }
 }
 
 export function makeTableDetailHandlers(pool: ConnectionPool) {
