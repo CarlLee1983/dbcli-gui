@@ -77,3 +77,13 @@ export const WorkspacesFileSchema = z.object({
   lastActiveId: z.string().min(1),
   workspaces: z.array(WorkspaceSchema),
 })
+
+// Workspace HTTP 路由請求 body 驗證器
+export const WorkspaceAddBody = z.object({
+  path: z.string().min(1),
+  label: z.string().min(1).optional(),
+})
+export const WorkspaceIdBody = z.object({ id: z.string().min(1) })
+
+export type WorkspaceAddBody = z.infer<typeof WorkspaceAddBody>
+export type WorkspaceIdBody = z.infer<typeof WorkspaceIdBody>
