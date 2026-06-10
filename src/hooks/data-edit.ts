@@ -1,3 +1,7 @@
+import type { MutateOps } from '../api/types'
+
+export type { MutateOps }
+
 export interface PendingEdits {
   updates: Record<string, Record<string, unknown>>
   inserts: Array<Record<string, unknown>>
@@ -12,12 +16,6 @@ export function rowKeyOf(row: Record<string, unknown>, primaryKey: string[]): st
 
 export function pendingCount(e: PendingEdits): number {
   return Object.keys(e.updates).length + e.inserts.length + e.deletes.length
-}
-
-export interface MutateOps {
-  updates: Array<{ pk: Record<string, unknown>; set: Record<string, unknown> }>
-  inserts: Array<{ values: Record<string, unknown> }>
-  deletes: Array<{ pk: Record<string, unknown> }>
 }
 
 export function buildMutateOps(

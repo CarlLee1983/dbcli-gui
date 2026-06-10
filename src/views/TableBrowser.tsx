@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trash2, X, Plus } from 'lucide-react'
 import type { TableSchemaDto, MutateOps, Permission } from '../api/types'
 import { useDataEdit } from '../hooks/useDataEdit'
 import { buildMutateOps, rowKeyOf, pendingCount } from '../hooks/data-edit'
@@ -41,7 +42,7 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave }
         {editMode ? (
           <div className="flex items-center gap-2">
             <span className="text-slate-500 dark:text-slate-400">{count} 筆待儲存</span>
-            <button type="button" onClick={() => edit.addInsert()} className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1">新增列</button>
+            <button type="button" onClick={() => edit.addInsert()} className="flex items-center gap-1 rounded border border-slate-300 dark:border-slate-700 px-2 py-1"><Plus className="h-3.5 w-3.5" />新增列</button>
             <button type="button" onClick={exitEdit} className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1">取消</button>
             <button type="button" onClick={save} disabled={saving || count === 0} className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-50">儲存{saving ? '中…' : ''}</button>
           </div>
@@ -68,7 +69,7 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave }
           </thead>
           <tbody>
             {rows.map((row, i) => {
-              const key = rowKeyOf(row, pk)
+              const key = hasPk ? rowKeyOf(row, pk) : String(i)
               const deleted = edit.edits.deletes.includes(key)
               const rowUpdates = edit.edits.updates[key]
               const changed = !!rowUpdates
@@ -95,7 +96,7 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave }
                   })}
                   {editMode ? (
                     <td className="px-2 py-1 border-b border-slate-100 dark:border-slate-800/40">
-                      <button type="button" aria-label={`刪除第 ${i + 1} 列`} onClick={() => edit.toggleDelete(key)} className="text-red-500 hover:text-red-600">🗑</button>
+                      <button type="button" aria-label={`刪除第 ${i + 1} 列`} onClick={() => edit.toggleDelete(key)} className="text-red-500 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
                     </td>
                   ) : null}
                 </tr>
@@ -115,7 +116,7 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave }
                       </td>
                     ))}
                     <td className="px-2 py-1 border-b border-slate-100 dark:border-slate-800/40">
-                      <button type="button" aria-label={`移除草稿 ${idx + 1}`} onClick={() => edit.removeInsert(idx)} className="text-slate-400 hover:text-slate-600">✕</button>
+                      <button type="button" aria-label={`移除草稿 ${idx + 1}`} onClick={() => edit.removeInsert(idx)} className="text-slate-400 hover:text-slate-600"><X className="h-3.5 w-3.5" /></button>
                     </td>
                   </tr>
                 ))

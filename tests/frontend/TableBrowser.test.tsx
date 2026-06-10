@@ -61,3 +61,30 @@ test('editing a cell then saving emits ops', () => {
   fireEvent.click(getByRole('button', { name: /儲存/ }))
   expect(calls.save).toEqual([{ updates: [{ pk: { id: 1 }, set: { name: 'ALICE' } }], inserts: [], deletes: [] }])
 })
+
+test('toggling delete then saving emits a delete op', () => {
+  const { getByRole, getByLabelText, calls } = setup()
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  fireEvent.click(getByLabelText('刪除第 1 列'))
+  fireEvent.click(getByRole('button', { name: /儲存/ }))
+  expect(calls.save).toEqual([{ updates: [], inserts: [], deletes: [{ pk: { id: 1 } }] }])
+})
+
+test('adding a row draft then saving emits an insert op', () => {
+  const { getByRole, getByLabelText, calls } = setup()
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  fireEvent.click(getByRole('button', { name: '新增列' }))
+  fireEvent.change(getByLabelText('新增 name 草稿 1'), { target: { value: 'carol' } })
+  fireEvent.click(getByRole('button', { name: /儲存/ }))
+  expect(calls.save).toEqual([{ updates: [], inserts: [{ values: { name: 'carol' } }], deletes: [] }])
+})
+
+test('cancel resets staged edits and exits edit mode', () => {
+  const { getByRole, getByLabelText, container } = setup()
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  fireEvent.change(getByLabelText('編輯 name 第 1 列'), { target: { value: 'zzz' } })
+  fireEvent.click(getByRole('button', { name: '取消' }))
+  // back to read-only: no inputs, edit button visible again
+  expect(container.querySelectorAll('input').length).toBe(0)
+  expect(getByRole('button', { name: '編輯' })).toBeDefined()
+})
