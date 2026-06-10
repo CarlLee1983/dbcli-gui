@@ -34,7 +34,13 @@ export function fixtureAdapter(tables: SeedTable[]): DatabaseAdapter {
       if (sql.includes(FORCE_ERROR)) {
         throw new ConnectionError('ECONNREFUSED', 'fixture forced failure', [])
       }
-      // Resolve the seed table whose name appears in the SQL; default to no rows.
+      const verb = sql.trim().split(/\s+/)[0]?.toUpperCase()
+      if (verb === 'INSERT' || verb === 'UPDATE' || verb === 'DELETE') {
+        // Fixture does not persist; report one affected row so the route's
+        // optimistic-concurrency check passes and the transaction commits.
+        return { rows: [], affectedRows: 1 } as ExecutionResult<T>
+      }
+      // SELECT (and BEGIN/COMMIT/ROLLBACK, which match no table) → seed rows / none.
       const t = tables.find((tb) => new RegExp(`\\b${tb.name}\\b`).test(sql))
       return { rows: (t?.rows ?? []) as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
     },

@@ -12,7 +12,7 @@ export interface AppApi {
   saving: boolean
   exportResult(format: 'csv' | 'json'): Promise<void>
   browseTable(table: string): Promise<void>
-  saveTableEdits(table: string, ops: MutateOps): Promise<void>
+  saveTableEdits(table: string, ops: MutateOps): Promise<boolean>
 }
 
 export function useApp(client: DbClient = defaultClient): AppApi {
@@ -45,9 +45,9 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [connections, tabs.openBrowse])
 
-  const saveTableEdits = useCallback(async (table: string, ops: MutateOps) => {
+  const saveTableEdits = useCallback(async (table: string, ops: MutateOps): Promise<boolean> => {
     const connId = connections.activeConnectionId
-    if (!connId) return
+    if (!connId) return false
     const tabId = tabs.activeId
     setSaving(true)
     try {
@@ -55,8 +55,10 @@ export function useApp(client: DbClient = defaultClient): AppApi {
       // `table` is a server-enumerated identifier from the schema tree (not free user input).
       const result = await connections.client.query(connId, `SELECT * FROM ${table} LIMIT 200`)
       tabs.setBrowseRows(tabId, result.rows)
+      return true
     } catch (err) {
       connections.setError(toApiError(err))
+      return false
     } finally {
       setSaving(false)
     }

@@ -1,5 +1,5 @@
 import { test, expect, afterEach } from 'bun:test'
-import { render, cleanup, fireEvent } from '@testing-library/react'
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import React from 'react'
 import { TableBrowser } from '../../src/views/TableBrowser'
 import type { TableSchemaDto } from '../../src/api/types'
@@ -77,6 +77,25 @@ test('adding a row draft then saving emits an insert op', () => {
   fireEvent.change(getByLabelText('新增 name 草稿 1'), { target: { value: 'carol' } })
   fireEvent.click(getByRole('button', { name: /儲存/ }))
   expect(calls.save).toEqual([{ updates: [], inserts: [{ values: { name: 'carol' } }], deletes: [] }])
+})
+
+test('successful save clears staged edits and exits edit mode', async () => {
+  const { getByRole, getByLabelText, container } = setup({ onSave: () => Promise.resolve(true) })
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  fireEvent.change(getByLabelText('編輯 name 第 1 列'), { target: { value: 'X' } })
+  fireEvent.click(getByRole('button', { name: /儲存/ }))
+  await waitFor(() => expect(container.querySelectorAll('input').length).toBe(0))
+  expect(getByRole('button', { name: '編輯' })).toBeDefined()
+})
+
+test('failed save keeps staged edits', async () => {
+  const { getByRole, getByLabelText, container } = setup({ onSave: () => Promise.resolve(false) })
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  fireEvent.change(getByLabelText('編輯 name 第 1 列'), { target: { value: 'X' } })
+  fireEvent.click(getByRole('button', { name: /儲存/ }))
+  // still in edit mode with inputs present
+  await new Promise((r) => setTimeout(r, 0))
+  expect(container.querySelectorAll('input').length).toBeGreaterThan(0)
 })
 
 test('cancel resets staged edits and exits edit mode', () => {

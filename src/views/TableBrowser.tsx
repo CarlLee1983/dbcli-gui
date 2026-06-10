@@ -10,7 +10,7 @@ export interface TableBrowserProps {
   rows: Array<Record<string, unknown>>
   permission: Permission
   saving: boolean
-  onSave(ops: MutateOps): void
+  onSave(ops: MutateOps): Promise<boolean> | void
 }
 
 function canWrite(p: Permission): boolean {
@@ -33,7 +33,10 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave }
   const count = pendingCount(edit.edits)
 
   const exitEdit = () => { edit.reset(); setEditMode(false) }
-  const save = () => onSave(buildMutateOps(edit.edits, byKey, pk))
+  const save = async () => {
+    const ok = await onSave(buildMutateOps(edit.edits, byKey, pk))
+    if (ok) { edit.reset(); setEditMode(false) }
+  }
 
   return (
     <div className="flex h-full w-full flex-col bg-white dark:bg-slate-900 text-xs">
