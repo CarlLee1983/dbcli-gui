@@ -68,7 +68,7 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
               type="search"
               aria-label="搜尋結果"
               value={filter}
-              onChange={(e) => { onFilterChange(e.target.value); setScrollTop(0) }}
+              onChange={(e) => { onFilterChange(e.target.value); setScrollTop(0); scrollRef.current?.scrollTo?.({ top: 0 }) }}
               placeholder="搜尋結果..."
               className="w-full rounded border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-xs text-slate-800 transition-colors focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             />

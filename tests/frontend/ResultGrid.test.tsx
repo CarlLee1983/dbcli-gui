@@ -83,6 +83,31 @@ test('result search box calls onFilterChange (controlled)', () => {
   expect(calls).toEqual(['app'])
 })
 
+test('changing the result search resets the scroll container to top', () => {
+  const rows = Array.from({ length: 5000 }, (_, i) => ({ id: i, label: `row ${i}` }))
+  render(
+    <ResultGrid
+      result={{ rows, fields: ['id', 'label'], rowCount: rows.length, ms: 1 }}
+      filter=""
+      sortField={null}
+      sortDir={null}
+      onFilterChange={() => {}}
+      onSort={() => {}}
+    />,
+  )
+
+  const scrollContainer = screen.getByRole('table').parentElement as HTMLDivElement
+  scrollContainer.scrollTop = 280
+  scrollContainer.scrollTo = (options?: ScrollToOptions) => {
+    scrollContainer.scrollTop = Number(options?.top ?? 0)
+  }
+
+  fireEvent.scroll(scrollContainer)
+  fireEvent.change(screen.getByRole('searchbox', { name: '搜尋結果' }), { target: { value: 'row 1' } })
+
+  expect(scrollContainer.scrollTop).toBe(0)
+})
+
 test('applies the controlled filter to rows', () => {
   render(
     <ResultGrid
