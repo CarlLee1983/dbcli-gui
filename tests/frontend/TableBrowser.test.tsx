@@ -179,6 +179,34 @@ test('headers stop being clickable in edit mode (sort would discard unsaved edit
   expect(th.className).not.toContain('cursor-pointer')
 })
 
+test('renders the filter bar + pager only when onFilter/onPage are provided', () => {
+  const { queryByLabelText, rerender } = setup()
+  expect(queryByLabelText('篩選欄位')).toBeNull()
+  expect(queryByLabelText('下一頁')).toBeNull()
+  rerender(
+    <TableBrowser table="users" schema={schema} rows={rows} permission="data-admin" saving={false}
+      onSave={() => {}} filter={null} total={3482} page={0} onFilter={() => {}} onPage={() => {}} />,
+  )
+  expect(queryByLabelText('篩選欄位')).not.toBeNull()
+  expect(queryByLabelText('下一頁')).not.toBeNull()
+})
+
+test('applying a filter forwards the chosen column/op/value to onFilter', () => {
+  const applied: unknown[] = []
+  const { getByLabelText, getByRole } = setup({ filter: null, total: 2, page: 0, onFilter: (f) => applied.push(f), onPage: () => {} })
+  fireEvent.change(getByLabelText('篩選欄位'), { target: { value: 'name' } })
+  fireEvent.change(getByLabelText('篩選值'), { target: { value: 'ali' } })
+  fireEvent.click(getByRole('button', { name: '篩選' }))
+  expect(applied).toEqual([{ column: 'name', op: '=', value: 'ali' }])
+})
+
+test('the filter bar + pager hide in edit mode (re-query would drop staged edits)', () => {
+  const { getByRole, queryByLabelText } = setup({ filter: null, total: 2, page: 0, onFilter: () => {}, onPage: () => {} })
+  fireEvent.click(getByRole('button', { name: '編輯' }))
+  expect(queryByLabelText('篩選欄位')).toBeNull()
+  expect(queryByLabelText('下一頁')).toBeNull()
+})
+
 test('cancel resets staged edits and exits edit mode', () => {
   const { getByRole, getByLabelText, container } = setup()
   fireEvent.click(getByRole('button', { name: '編輯' }))

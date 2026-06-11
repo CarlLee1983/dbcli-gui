@@ -3,6 +3,7 @@ import { SquarePen } from 'lucide-react'
 import type { TableSession, LazyKey } from '../hooks/tabs-reducer'
 import type { SubTab, MutateOps, Permission } from '../api/types'
 import type { SortDir } from './grid-virtual'
+import type { ContentFilter } from './content-query'
 import { StructureTab } from './table/StructureTab'
 import { RelationsTab } from './table/RelationsTab'
 import { TriggersTab } from './table/TriggersTab'
@@ -28,13 +29,19 @@ export interface TableTabProps {
   onSetSubTab(subTab: SubTab): void
   onLoadSubTab(key: LazyKey): void
   onLoadContent(): void
+  onLoadContentCount(): void
   onSortContent(field: string, dir: SortDir): void
+  onFilterContent(filter: ContentFilter | null): void
+  onPageContent(page: number): void
   onOpenQuery(sql: string): void
   onSave(ops: MutateOps): Promise<boolean> | void
 }
 
-export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTab, onLoadContent, onSortContent, onOpenQuery, onSave }: TableTabProps) {
+export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTab, onLoadContent, onLoadContentCount, onSortContent, onFilterContent, onPageContent, onOpenQuery, onSave }: TableTabProps) {
   const { subTab } = session
+  // A full-table browse (no fixed result fields) gets the filter bar + pagination; an
+  // arbitrary-SQL edit tab keeps its own SQL and shows neither.
+  const isBrowse = session.fields === undefined
 
   // When the active sub-tab is lazy and uncached, fetch it (covers programmatic opens, e.g. edit flow).
   // Content is not in LAZY (its rows live on the session, not a cache slot) but loads the same way:
@@ -42,7 +49,11 @@ export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTa
   useEffect(() => {
     const key = LAZY[subTab]
     if (key && session[key] === undefined && !session.cacheErrors?.[key]) onLoadSubTab(key)
-    if (subTab === 'content' && session.rows === undefined) onLoadContent()
+    if (subTab === 'content') {
+      if (session.rows === undefined) onLoadContent()
+      // Count lazily for the pager (browse only); the handler no-ops once counted / for edit tabs.
+      if (isBrowse && session.total === undefined) onLoadContentCount()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab, session.table])
 
@@ -99,7 +110,12 @@ export function TableTab({ session, permission, saving, onSetSubTab, onLoadSubTa
             sortDir={session.sortDir ?? null}
             // Server-side sort applies only to a full-table browse; an arbitrary-SQL edit
             // tab (fields set) keeps its own SQL, so its headers stay non-clickable.
-            onSort={session.fields === undefined ? onSortContent : undefined}
+            onSort={isBrowse ? onSortContent : undefined}
+            filter={session.filter ?? null}
+            total={session.total ?? null}
+            page={session.page ?? 0}
+            onFilter={isBrowse ? onFilterContent : undefined}
+            onPage={isBrowse ? onPageContent : undefined}
           />
         )}
         {subTab === 'relations' && <RelationsTab relations={session.relations} error={session.cacheErrors?.relations} />}

@@ -1,5 +1,6 @@
 import type { QueryResultDto, TableSchemaDto, SubTab, TriggerDto, TableInfoDto, RelationsDto } from '../api/types'
 import type { SortDir } from '../views/grid-virtual'
+import type { ContentFilter } from '../views/content-query'
 import type { ApiError } from '../api/client'
 
 /** Lazy sub-tabs fetched on demand; undefined cache = not yet loaded. */
@@ -28,6 +29,12 @@ export interface TableSession {
   // Content sub-tab sort — server-side ORDER BY re-fetch; null/undefined = default order.
   sortField?: string | null
   sortDir?: SortDir
+  // Content sub-tab filter bar — column/operator/value WHERE clause; null = no filter.
+  filter?: ContentFilter | null
+  // Server-side pagination (full-table browse only); 0-based page, total = COUNT(*) for the
+  // active filter (null = counted-but-unknown, undefined = not yet counted).
+  page?: number
+  total?: number | null
 }
 
 export interface QuerySession {
@@ -81,6 +88,9 @@ export type TabsAction =
   | { type: 'openTableTab'; session: TableSession }
   | { type: 'setTableRows'; id: string; rows: Array<Record<string, unknown>> }
   | { type: 'setContentSort'; id: string; sortField: string | null; sortDir: SortDir; sql: string; rows: Array<Record<string, unknown>> }
+  | { type: 'setContentFilter'; id: string; filter: ContentFilter | null; sql: string; rows: Array<Record<string, unknown>>; total: number | null }
+  | { type: 'setContentPage'; id: string; page: number; sql: string; rows: Array<Record<string, unknown>> }
+  | { type: 'setContentTotal'; id: string; total: number | null }
   | { type: 'setSubTab'; id: string; subTab: SubTab }
   | { type: 'setTableCache'; id: string; key: LazyKey; value: TriggerDto[] | TableInfoDto | RelationsDto }
   | { type: 'setSubTabError'; id: string; key: LazyKey; error: SubTabError }
@@ -151,8 +161,16 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       return mapTable(state, action.id, (t) => ({ ...t, rows: action.rows }))
     case 'setContentSort':
       // Commit the re-fetched rows together with the sort state and the SQL that produced
-      // them, so a later save replays the same sorted/limited view.
-      return mapTable(state, action.id, (t) => ({ ...t, sortField: action.sortField, sortDir: action.sortDir, sql: action.sql, rows: action.rows }))
+      // them, so a later save replays the same sorted/limited view. Re-sorting reorders the
+      // whole (filtered) table, so jump back to the first page.
+      return mapTable(state, action.id, (t) => ({ ...t, sortField: action.sortField, sortDir: action.sortDir, sql: action.sql, rows: action.rows, page: 0 }))
+    case 'setContentFilter':
+      // A new filter changes the row set: commit rows + recount total and reset to page 0.
+      return mapTable(state, action.id, (t) => ({ ...t, filter: action.filter, sql: action.sql, rows: action.rows, total: action.total, page: 0 }))
+    case 'setContentPage':
+      return mapTable(state, action.id, (t) => ({ ...t, page: action.page, sql: action.sql, rows: action.rows }))
+    case 'setContentTotal':
+      return mapTable(state, action.id, (t) => ({ ...t, total: action.total }))
     case 'setSubTab':
       return mapTable(state, action.id, (t) => ({ ...t, subTab: action.subTab }))
     case 'setTableCache':

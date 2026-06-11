@@ -43,7 +43,23 @@ test('open a table tab, switch all five sub-tabs, then open a new query', async 
   await page.getByRole('columnheader', { name: 'id' }).click()
   await expect(firstLabel()).toHaveText('orders-row-3')
 
+  // ⌘F focuses the content filter value input.
+  await page.keyboard.press('Meta+f')
+  await expect(page.getByLabel('篩選值')).toBeFocused()
+
+  // Content filter bar narrows the rows; the pager shows the filtered total.
+  await page.getByLabel('篩選欄位').selectOption('label')
+  await page.getByLabel('篩選運算子').selectOption('contains')
+  await page.getByLabel('篩選值').fill('row-2')
+  await page.getByRole('button', { name: '篩選' }).click()
+  await expect(page.getByText('orders-row-2')).toBeVisible()
+  await expect(page.getByText('orders-row-1')).toBeHidden()
+  await expect(page.getByText(/1–1 \/ 1/)).toBeVisible()
+  // Clearing the filter restores all rows.
+  await page.getByLabel('清除篩選').click()
+  await expect(page.getByText('orders-row-1')).toBeVisible()
+
   // Open a new query prefilled from this table
   await page.getByRole('button', { name: /以此表開新查詢/ }).click()
-  await expect(page.getByLabel('SQL 查詢')).toHaveValue(/SELECT \* FROM orders/)
+  await expect(page.getByLabel('SQL 查詢')).toHaveText(/SELECT \* FROM orders/)
 })

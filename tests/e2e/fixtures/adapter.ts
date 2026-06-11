@@ -56,6 +56,21 @@ export function fixtureAdapter(tables: SeedTable[]): DatabaseAdapter {
       // content sub-tab's server-side sort can be exercised end-to-end.
       const t = tables.find((tb) => new RegExp(`\\b${tb.name}\\b`).test(sql))
       let rows = [...(t?.rows ?? [])]
+      // Minimal `col LIKE '%v%'` / `col = 'v'` support so the content filter bar visibly narrows
+      // rows end-to-end (the fixture ignores other operators).
+      const like = /WHERE\s+(\w+)\s+LIKE\s+'%(.*?)%'/i.exec(sql)
+      const eq = /WHERE\s+(\w+)\s*=\s*'(.*?)'/i.exec(sql)
+      if (like) {
+        const [, col, needle] = like
+        rows = rows.filter((r) => String(r[col as string] ?? '').includes(needle as string))
+      } else if (eq) {
+        const [, col, want] = eq
+        rows = rows.filter((r) => String(r[col as string] ?? '') === want)
+      }
+      // COUNT(*) AS total → the pager's total.
+      if (/COUNT\(\*\)/i.test(sql)) {
+        return { rows: [{ total: rows.length }] as unknown as T[], affectedRows: 0 } as ExecutionResult<T>
+      }
       const order = /ORDER\s+BY\s+(\w+)\s*(ASC|DESC)?/i.exec(sql)
       if (order) {
         const col = order[1] as string

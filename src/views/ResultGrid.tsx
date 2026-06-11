@@ -3,6 +3,8 @@ import type { QueryResultDto } from '../api/types'
 import { computeVisibleRange, nextSortDir, sortRows, type SortDir } from './grid-virtual'
 import { filterRows } from './row-filter'
 import { CellDetailModal } from '../components/CellDetailModal'
+import { ContextMenu, useContextMenu, type ContextMenuItem } from '../components/ContextMenu'
+import { cellText, rowToTsv, rowToCsv, copyText } from './copy-format'
 import { Search } from 'lucide-react'
 
 const ROW_HEIGHT = 28
@@ -72,6 +74,13 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
   const [scrollTop, setScrollTop] = useState(0)
   const [detail, setDetail] = useState<{ field: string; value: unknown; row: Record<string, unknown> } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const menu = useContextMenu()
+
+  const cellMenuItems = (field: string, row: Record<string, unknown>, fields: string[]): ContextMenuItem[] => [
+    { label: '複製儲存格', onSelect: () => copyText(cellText(row[field])) },
+    { label: '複製整列 (TSV)', onSelect: () => copyText(rowToTsv(row, fields)) },
+    { label: '複製列為 CSV', onSelect: () => copyText(rowToCsv(row, fields)) },
+  ]
 
   const sorted = useMemo(() => {
     if (!result) return []
@@ -177,6 +186,7 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
                     key={f}
                     data-col={f}
                     onClick={() => setDetail({ field: f, value: row[f], row })}
+                    onContextMenu={(e) => menu.openAt(e, cellMenuItems(f, row, result.fields))}
                     className={`cursor-pointer truncate border-b border-slate-100 px-3 py-1 hover:bg-blue-50/50 dark:border-slate-800/40 dark:hover:bg-blue-950/20 ${cellTone(row[f])}`}
                   >
                     {renderCellContent(row[f])}
@@ -204,6 +214,7 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
       {detail ? (
         <CellDetailModal field={detail.field} value={detail.value} row={detail.row} onClose={() => setDetail(null)} />
       ) : null}
+      <ContextMenu state={menu.state} onClose={menu.close} />
     </div>
   )
 }

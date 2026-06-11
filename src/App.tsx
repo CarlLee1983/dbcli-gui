@@ -256,7 +256,10 @@ export function App() {
                 onSetSubTab={(s) => tabs.setSubTab(tabs.activeId, s)}
                 onLoadSubTab={(k) => app.loadSubTab(tabs.activeId, k)}
                 onLoadContent={() => app.loadContent(tabs.activeId)}
+                onLoadContentCount={() => app.loadContentCount(tabs.activeId)}
                 onSortContent={(field, dir) => app.sortContent(tabs.activeId, field, dir)}
+                onFilterContent={(filter) => app.setContentFilter(tabs.activeId, filter)}
+                onPageContent={(page) => app.setContentPage(tabs.activeId, page)}
                 onOpenQuery={(sql) => tabs.openQuery(sql)}
                 onSave={(ops) => app.saveTableEdits(active.table!.table, ops)}
               />

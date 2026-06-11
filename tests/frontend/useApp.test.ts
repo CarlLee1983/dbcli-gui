@@ -198,6 +198,110 @@ test('saveTableEdits replays the sorted SQL after a content sort', async () => {
   expect(queryCalls).toEqual(['SELECT * FROM orders ORDER BY id DESC LIMIT 200'])
 })
 
+test('loadContentCount fetches COUNT(*) once and stores the total (browse tab)', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => {
+      queryCalls.push(sql)
+      if (sql.includes('COUNT(*)')) return { rows: [{ total: 3482 }], fields: ['total'], rowCount: 1, ms: 1 }
+      return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 }
+    },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  await act(async () => { await result.current.loadContentCount(id) })
+  expect(queryCalls).toContain('SELECT COUNT(*) AS total FROM orders')
+  expect(result.current.tabs.active.table?.total).toBe(3482)
+  const before = queryCalls.length
+  await act(async () => { await result.current.loadContentCount(id) })
+  expect(queryCalls.length).toBe(before) // already counted → no-op
+})
+
+test('loadContentCount is a no-op for an arbitrary-SQL edit tab (fields set)', async () => {
+  const editableSchema = { name: 'users', columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true }], primaryKey: ['id'] }
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async () => editableSchema,
+    query: async (_id, sql) => { queryCalls.push(sql); return { rows: [{ id: 1, name: 'a' }], fields: ['id', 'name'], rowCount: 1, ms: 1 } },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  act(() => { result.current.tabs.setSql('SELECT id, name FROM users WHERE id < 5') })
+  await act(async () => { await result.current.tabs.runQuery() })
+  await act(async () => { await result.current.editQueryResult() })
+  const id = result.current.tabs.activeId
+  queryCalls.length = 0
+  await act(async () => { await result.current.loadContentCount(id) })
+  expect(queryCalls.filter((s) => s.includes('COUNT(*)'))).toHaveLength(0)
+})
+
+test('setContentFilter re-fetches filtered rows + COUNT and stores filter/total/page', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    schemaTable: async () => ({ name: 'orders', columns: [{ name: 'email', type: 'text', nullable: true }] }),
+    query: async (_id, sql) => {
+      queryCalls.push(sql)
+      if (sql.includes('COUNT(*)')) return { rows: [{ total: 12 }], fields: ['total'], rowCount: 1, ms: 1 }
+      return { rows: [{ email: 'a@gmail.com' }], fields: ['email'], rowCount: 1, ms: 1 }
+    },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  queryCalls.length = 0
+  await act(async () => { await result.current.setContentFilter(id, { column: 'email', op: 'contains', value: 'gmail' }) })
+  expect(queryCalls).toContain("SELECT * FROM orders WHERE email LIKE '%gmail%' LIMIT 200")
+  expect(queryCalls).toContain("SELECT COUNT(*) AS total FROM orders WHERE email LIKE '%gmail%'")
+  expect(result.current.tabs.active.table?.filter).toEqual({ column: 'email', op: 'contains', value: 'gmail' })
+  expect(result.current.tabs.active.table?.total).toBe(12)
+  expect(result.current.tabs.active.table?.page).toBe(0)
+  expect(result.current.tabs.active.table?.rows).toEqual([{ email: 'a@gmail.com' }])
+})
+
+test('setContentFilter with null clears the WHERE and recounts the full table', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => {
+      queryCalls.push(sql)
+      if (sql.includes('COUNT(*)')) return { rows: [{ total: 999 }], fields: ['total'], rowCount: 1, ms: 1 }
+      return { rows: [{ id: 1 }], fields: ['id'], rowCount: 1, ms: 1 }
+    },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  queryCalls.length = 0
+  await act(async () => { await result.current.setContentFilter(id, null) })
+  expect(queryCalls).toContain('SELECT * FROM orders LIMIT 200')
+  expect(queryCalls).toContain('SELECT COUNT(*) AS total FROM orders')
+  expect(result.current.tabs.active.table?.filter ?? null).toBeNull()
+})
+
+test('setContentPage re-fetches the page with OFFSET, preserving the active filter', async () => {
+  const queryCalls: string[] = []
+  const { result } = renderHook(() => useApp(fakeClient({
+    query: async (_id, sql) => {
+      queryCalls.push(sql)
+      if (sql.includes('COUNT(*)')) return { rows: [{ total: 500 }], fields: ['total'], rowCount: 1, ms: 1 }
+      return { rows: [{ id: 201 }], fields: ['id'], rowCount: 1, ms: 1 }
+    },
+  })))
+  await waitFor(() => expect(result.current.connections.online).toBe(true))
+  await act(async () => { await result.current.connections.selectConnection('a') })
+  await act(async () => { await result.current.openTableTab('orders', 'content') })
+  const id = result.current.tabs.activeId
+  await act(async () => { await result.current.setContentFilter(id, { column: 'email', op: 'contains', value: 'g' }) })
+  queryCalls.length = 0
+  await act(async () => { await result.current.setContentPage(id, 1) })
+  expect(queryCalls).toEqual(["SELECT * FROM orders WHERE email LIKE '%g%' LIMIT 200 OFFSET 200"])
+  expect(result.current.tabs.active.table?.page).toBe(1)
+  expect(result.current.tabs.active.table?.rows).toEqual([{ id: 201 }])
+})
+
 test('loadSubTab caches triggers and is a no-op on second call', async () => {
   let calls = 0
   const { result } = renderHook(() => useApp(fakeClient({

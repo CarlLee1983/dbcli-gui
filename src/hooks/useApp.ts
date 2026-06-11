@@ -5,16 +5,19 @@ import { useHistory, type HistoryApi } from './useHistory'
 import { useTabs, type TabsApi } from './useTabs'
 import { useWorkspaces, type WorkspacesApi } from './useWorkspaces'
 import { detectSingleTable, resultIsEditable } from './single-table'
+import { buildBrowseSql, buildCountSql, parseTotal, type ContentFilter } from '../views/content-query'
 import type { MutateOps, SubTab } from '../api/types'
-import type { LazyKey } from './tabs-reducer'
+import type { LazyKey, TableSession } from './tabs-reducer'
 import type { SortDir } from '../views/grid-virtual'
 
-// Full-table browse SQL. LIMIT 200 mirrors the sidebar browse default (more rows to edit).
-// `table` and `sortField` are server-enumerated identifiers (schema tree / columns), not free
-// user input, so they are interpolated unquoted to match the existing FROM-clause convention.
-function buildBrowseSql(table: string, sortField: string | null, sortDir: SortDir): string {
-  const order = sortField && sortDir ? ` ORDER BY ${sortField} ${sortDir === 'desc' ? 'DESC' : 'ASC'}` : ''
-  return `SELECT * FROM ${table}${order} LIMIT 200`
+// Build the full-table browse SQL for a content session, carrying its current sort/filter/page.
+function browseSqlFor(t: TableSession, over: Partial<{ filter: ContentFilter | null; page: number }> = {}): string {
+  return buildBrowseSql(t.table, {
+    sortField: t.sortField ?? null,
+    sortDir: t.sortDir ?? null,
+    filter: 'filter' in over ? over.filter ?? null : t.filter ?? null,
+    page: 'page' in over ? over.page : t.page ?? 0,
+  })
 }
 
 export interface AppApi {
@@ -27,7 +30,10 @@ export interface AppApi {
   openTableTab(table: string, subTab?: SubTab): Promise<void>
   loadSubTab(tabId: string, key: LazyKey): Promise<void>
   loadContent(tabId: string): Promise<void>
+  loadContentCount(tabId: string): Promise<void>
   sortContent(tabId: string, field: string, dir: SortDir): Promise<void>
+  setContentFilter(tabId: string, filter: ContentFilter | null): Promise<void>
+  setContentPage(tabId: string, page: number): Promise<void>
   saveTableEdits(table: string, ops: MutateOps): Promise<boolean>
   editQueryResult(): Promise<void>
   switchWorkspace(id: string): Promise<void>
@@ -59,8 +65,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     try {
       const schema = await connections.client.schemaTable(connId, table)
       // `table` is a server-enumerated identifier from the schema tree (not free user input).
-      // The "以此表開新查詢" button deliberately uses LIMIT 100, matching the insert-select default.
-      const sql = buildBrowseSql(table, null, null)
+      const sql = buildBrowseSql(table)
       // Content sub-tab needs rows up front so the browser renders immediately.
       const rows = subTab === 'content' ? (await connections.client.query(connId, sql)).rows : undefined
       tabs.openTableTab({ connectionId: connId, table, schema, subTab, sql, rows })
@@ -107,7 +112,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     if (inFlight.current.has(flightKey)) return // a fetch for this tab's content is already running
     inFlight.current.add(flightKey)
     try {
-      const sql = t.sql ?? buildBrowseSql(t.table, t.sortField ?? null, t.sortDir ?? null)
+      const sql = t.sql ?? browseSqlFor(t)
       const res = await connections.client.query(connId, sql)
       tabs.setTableRows(tabId, res.rows)
     } catch (err) {
@@ -116,6 +121,28 @@ export function useApp(client: DbClient = defaultClient): AppApi {
       inFlight.current.delete(flightKey)
     }
   }, [connections, tabs.getSession, tabs.setTableRows])
+
+  // Count the rows behind the current filter so the pager can show "n–m / total". Runs once
+  // per (table, filter) for a full-table browse; an arbitrary-SQL edit tab (fields set) has no
+  // pagination, so it never counts. Deduped on its own in-flight key, independent of the rows.
+  const loadContentCount = useCallback(async (tabId: string) => {
+    const connId = connections.activeConnectionId
+    const session = tabs.getSession(tabId)
+    const t = session?.table
+    if (!connId || !t || t.fields !== undefined || t.total !== undefined) return
+    const flightKey = `${tabId}:count`
+    if (inFlight.current.has(flightKey)) return
+    inFlight.current.add(flightKey)
+    try {
+      const res = await connections.client.query(connId, buildCountSql(t.table, t.filter ?? null))
+      tabs.setContentTotal(tabId, parseTotal(res))
+    } catch {
+      // A failed count must not blank the rows; mark it counted-but-unknown to stop retry loops.
+      tabs.setContentTotal(tabId, null)
+    } finally {
+      inFlight.current.delete(flightKey)
+    }
+  }, [connections, tabs.getSession, tabs.setContentTotal])
 
   // Re-fetch the content rows ordered by a clicked column (server-side ORDER BY), so the
   // sort spans the whole table rather than just the loaded 200 rows. Only a full-table
@@ -126,7 +153,8 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     const t = session?.table
     if (!connId || !t || t.fields !== undefined) return
     const sortField = dir ? field : null
-    const sql = buildBrowseSql(t.table, sortField, dir)
+    // Re-sorting reorders the whole filtered table, so reset to page 0 but keep the filter.
+    const sql = buildBrowseSql(t.table, { sortField, sortDir: dir, filter: t.filter ?? null, page: 0 })
     try {
       const res = await connections.client.query(connId, sql)
       tabs.setContentSort(tabId, sortField, dir, sql, res.rows)
@@ -134,6 +162,41 @@ export function useApp(client: DbClient = defaultClient): AppApi {
       connections.setError(toApiError(err))
     }
   }, [connections, tabs.getSession, tabs.setContentSort])
+
+  // Apply (or clear) the content filter bar: re-fetch page 0 of the filtered rows and the new
+  // total in parallel. Browse-only — an arbitrary-SQL edit tab keeps its own SQL.
+  const setContentFilter = useCallback(async (tabId: string, filter: ContentFilter | null) => {
+    const connId = connections.activeConnectionId
+    const session = tabs.getSession(tabId)
+    const t = session?.table
+    if (!connId || !t || t.fields !== undefined) return
+    const sql = browseSqlFor(t, { filter, page: 0 })
+    try {
+      const [res, countRes] = await Promise.all([
+        connections.client.query(connId, sql),
+        connections.client.query(connId, buildCountSql(t.table, filter)),
+      ])
+      tabs.setContentFilter(tabId, filter, sql, res.rows, parseTotal(countRes))
+    } catch (err) {
+      connections.setError(toApiError(err))
+    }
+  }, [connections, tabs.getSession, tabs.setContentFilter])
+
+  // Jump to a 0-based page: re-fetch with OFFSET, carrying the current sort + filter. The total
+  // is unchanged by paging, so no recount.
+  const setContentPage = useCallback(async (tabId: string, page: number) => {
+    const connId = connections.activeConnectionId
+    const session = tabs.getSession(tabId)
+    const t = session?.table
+    if (!connId || !t || t.fields !== undefined) return
+    const sql = browseSqlFor(t, { page })
+    try {
+      const res = await connections.client.query(connId, sql)
+      tabs.setContentPage(tabId, page, sql, res.rows)
+    } catch (err) {
+      connections.setError(toApiError(err))
+    }
+  }, [connections, tabs.getSession, tabs.setContentPage])
 
   // Stage two: open the active arbitrary-SQL result for editing when it is a plain
   // single-table SELECT whose primary key is projected. The structural detection is
@@ -166,7 +229,7 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     const tabId = tabs.activeId
     // Replay the session's own fetch query so an edited arbitrary SELECT refreshes the
     // same filtered view rather than a full-table scan.
-    const refetchSql = tabs.active.table?.sql ?? buildBrowseSql(table, null, null)
+    const refetchSql = tabs.active.table?.sql ?? buildBrowseSql(table)
     setSaving(true)
     try {
       await connections.client.mutate(connId, table, ops)
@@ -201,5 +264,5 @@ export function useApp(client: DbClient = defaultClient): AppApi {
     }
   }, [workspaces, connections, tabs])
 
-  return { connections, history, tabs, workspaces, saving, exportResult, openTableTab, loadSubTab, loadContent, sortContent, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
+  return { connections, history, tabs, workspaces, saving, exportResult, openTableTab, loadSubTab, loadContent, loadContentCount, sortContent, setContentFilter, setContentPage, saveTableEdits, editQueryResult, switchWorkspace, removeWorkspace }
 }

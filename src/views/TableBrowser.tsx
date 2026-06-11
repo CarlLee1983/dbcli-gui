@@ -4,6 +4,11 @@ import type { TableSchemaDto, MutateOps, Permission } from '../api/types'
 import { useDataEdit } from '../hooks/useDataEdit'
 import { buildMutateOps, rowKeyOf, pendingCount } from '../hooks/data-edit'
 import { nextSortDir, type SortDir } from './grid-virtual'
+import { ContentFilterBar } from './ContentFilterBar'
+import { ContentPager } from './ContentPager'
+import { DEFAULT_PAGE_SIZE, type ContentFilter } from './content-query'
+import { ContextMenu, useContextMenu, type ContextMenuItem } from '../components/ContextMenu'
+import { cellText, rowToTsv, rowToCsv, rowToInsert, copyText } from './copy-format'
 
 export interface TableBrowserProps {
   table: string
@@ -20,6 +25,14 @@ export interface TableBrowserProps {
   sortField?: string | null
   sortDir?: SortDir
   onSort?(field: string, dir: SortDir): void
+  // Filter bar + pagination (full-table browse only). Present together with onSort; absent for
+  // an arbitrary-SQL edit tab, which keeps its own SQL.
+  filter?: ContentFilter | null
+  total?: number | null
+  page?: number
+  pageSize?: number
+  onFilter?(filter: ContentFilter | null): void
+  onPage?(page: number): void
 }
 
 function canWrite(p: Permission): boolean {
@@ -31,9 +44,10 @@ function renderValue(v: unknown): string {
   return typeof v === 'object' ? JSON.stringify(v) : String(v)
 }
 
-export function TableBrowser({ table, schema, rows, permission, saving, onSave, columns, sortField, sortDir, onSort }: TableBrowserProps) {
+export function TableBrowser({ table, schema, rows, permission, saving, onSave, columns, sortField, sortDir, onSort, filter, total, page, pageSize, onFilter, onPage }: TableBrowserProps) {
   const [editMode, setEditMode] = useState(false)
   const edit = useDataEdit()
+  const menu = useContextMenu()
   const pk = schema.primaryKey ?? []
   const hasPk = pk.length > 0
   const editable = hasPk && canWrite(permission)
@@ -45,6 +59,13 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave, 
   const canInsert = cols.length === schema.columns.length
   const byKey = Object.fromEntries(rows.map((r) => [rowKeyOf(r, pk), r]))
   const count = pendingCount(edit.edits)
+
+  const cellMenuItems = (field: string, row: Record<string, unknown>): ContextMenuItem[] => [
+    { label: '複製儲存格', onSelect: () => copyText(cellText(row[field])) },
+    { label: '複製整列 (TSV)', onSelect: () => copyText(rowToTsv(row, cols)) },
+    { label: '複製列為 CSV', onSelect: () => copyText(rowToCsv(row, cols)) },
+    { label: '複製列為 INSERT', onSelect: () => copyText(rowToInsert(table, row, cols)) },
+  ]
 
   // Sorting re-fetches from the server, which would discard unsaved edits — only offer it
   // while browsing (read-only), not in edit mode.
@@ -78,6 +99,11 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave, 
           <button type="button" onClick={() => setEditMode(true)} disabled={!editable} className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-50">編輯</button>
         )}
       </div>
+
+      {/* Filter bar — browse-only and hidden while editing (re-querying would drop staged edits). */}
+      {onFilter && !editMode ? (
+        <ContentFilterBar columns={schema.columns} filter={filter ?? null} onApply={onFilter} />
+      ) : null}
 
       {!hasPk ? (
         <div className="px-3 py-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900">
@@ -130,7 +156,11 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave, 
                     const stagedValue = rowUpdates !== undefined && c in rowUpdates ? rowUpdates[c] : undefined
                     const current = stagedValue !== undefined ? stagedValue : row[c]
                     return (
-                      <td key={c} className="px-3 py-1 border-b border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-300">
+                      <td
+                        key={c}
+                        onContextMenu={editMode ? undefined : (e) => menu.openAt(e, cellMenuItems(c, row))}
+                        className="px-3 py-1 border-b border-slate-100 dark:border-slate-800/40 text-slate-800 dark:text-slate-300"
+                      >
                         {editMode && !deleted ? (
                           <input
                             aria-label={`編輯 ${c} 第 ${i + 1} 列`}
@@ -174,6 +204,19 @@ export function TableBrowser({ table, schema, rows, permission, saving, onSave, 
           </tbody>
         </table>
       </div>
+
+      <ContextMenu state={menu.state} onClose={menu.close} />
+
+      {/* Pager footer — browse-only and hidden while editing. */}
+      {onPage && !editMode ? (
+        <ContentPager
+          page={page ?? 0}
+          pageSize={pageSize ?? DEFAULT_PAGE_SIZE}
+          rowCount={rows.length}
+          total={total ?? null}
+          onPage={onPage}
+        />
+      ) : null}
     </div>
   )
 }
