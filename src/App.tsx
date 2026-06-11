@@ -23,6 +23,8 @@ export function App() {
     () => (active.result ? detectSingleTable(active.executedSql) : null),
     [active.result, active.executedSql],
   )
+  // Table names from the schema tree feed the SQL editor's autocompletion.
+  const tableNames = useMemo(() => conn.tree.map((t) => t.name), [conn.tree])
 
   // Resizable state
   const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem('sidebarWidth') || '256'))
@@ -272,6 +274,7 @@ export function App() {
                   sql={active.sql}
                   loading={active.loading}
                   hasResult={!!active.result}
+                  tables={tableNames}
                   onChange={tabs.setSql}
                   onRun={tabs.runQuery}
                   onExport={app.exportResult}

@@ -17,5 +17,5 @@ test('running a query records it in history and clicking reloads the SQL', async
   // change the editor, then click history to reload
   await editor.fill('SELECT 1')
   await historyPanel.getByText('SELECT * FROM orders').click()
-  await expect(editor).toHaveValue('SELECT * FROM orders')
+  await expect(editor).toHaveText('SELECT * FROM orders')
 })

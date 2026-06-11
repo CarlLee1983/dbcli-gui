@@ -14,7 +14,7 @@ test('a second tab runs queries independently of the first', async ({ page }) =>
 
   // open tab 2: fresh empty session, no result
   await page.getByRole('button', { name: '開新分頁' }).click()
-  await expect(editor).toHaveValue('')
+  await expect(editor).toHaveText('')
   await expect(page.getByText('orders-row-1')).toHaveCount(0)
 
   // run a different query in tab 2
@@ -25,5 +25,5 @@ test('a second tab runs queries independently of the first', async ({ page }) =>
   // back to tab 1: its orders result is preserved
   await page.getByText('查詢 1').click()
   await expect(page.getByText('orders-row-1')).toBeVisible()
-  await expect(editor).toHaveValue('SELECT * FROM orders')
+  await expect(editor).toHaveText('SELECT * FROM orders')
 })
