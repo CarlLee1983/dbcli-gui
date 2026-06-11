@@ -11,6 +11,7 @@ import { ConnectionFormModal } from './components/ConnectionFormModal'
 import { TableTab } from './views/TableTab'
 import { WorkspaceSwitcher } from './views/WorkspaceSwitcher'
 import { detectSingleTable } from './hooks/single-table'
+import { resolveShortcut, FILTER_FOCUS_SELECTORS } from './hooks/shortcuts'
 import type { ConnectionDetail } from './api/types'
 
 export function App() {
@@ -54,6 +55,40 @@ export function App() {
     e.preventDefault()
     setActiveResizer(resizer)
   }
+
+  // Global keyboard shortcuts (Sequel Ace-style): ⌘T new tab, ⌘W close, ⌘R run, ⌘F filter,
+  // ⌘1..9 switch tab. Re-subscribes each render so it always sees the current active tab.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const action = resolveShortcut(e)
+      if (!action) return
+      switch (action.type) {
+        case 'newTab':
+          e.preventDefault(); tabs.openTab(); break
+        case 'closeTab':
+          e.preventDefault(); tabs.closeTab(tabs.activeId); break
+        case 'run':
+          // Only query tabs run; on a table tab we still swallow ⌘R to avoid a page reload.
+          e.preventDefault(); if (active.table === null) tabs.runQuery(); break
+        case 'switchTab': {
+          const target = tabs.sessions[action.index]
+          if (target) { e.preventDefault(); tabs.setActive(target.id) }
+          break
+        }
+        case 'focusFilter': {
+          for (const sel of FILTER_FOCUS_SELECTORS) {
+            const el = document.querySelector<HTMLInputElement>(sel)
+            if (el) { e.preventDefault(); el.focus(); el.select?.(); break }
+          }
+          break
+        }
+      }
+    }
+    // Capture phase so the shortcut is seen before CodeMirror (which may stop propagation)
+    // and before the browser's own accelerators (e.g. ⌘R reload) act on the default.
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [tabs, active.table])
 
   useEffect(() => {
     if (!activeResizer) return
