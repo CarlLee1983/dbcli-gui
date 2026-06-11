@@ -26,6 +26,12 @@ export interface TableColumnDto {
   default?: string
   /** Column comment/description (MySQL/MariaDB COLUMN_COMMENT, PostgreSQL col description). */
   comment?: string | null
+  /** True for an auto-incrementing column (MySQL/MariaDB AUTO_INCREMENT). Often absent on PostgreSQL. */
+  autoIncrement?: boolean
+  /** Outgoing foreign-key reference for this column, when one exists. */
+  foreignKey?: { table: string; column: string }
+  /** Allowed values when the column is an ENUM type. */
+  enumValues?: string[]
 }
 
 export interface TableSchemaDto {

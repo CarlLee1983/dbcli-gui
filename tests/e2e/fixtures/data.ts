@@ -8,6 +8,9 @@ export interface SeedColumn {
   nullable: boolean
   primaryKey?: boolean
   comment?: string
+  autoIncrement?: boolean
+  foreignKey?: { table: string; column: string }
+  enumValues?: string[]
 }
 
 export interface SeedTable {
@@ -40,7 +43,7 @@ export const SEED: SeedConnection[] = [
         name: 'orders',
         type: 'table',
         columns: [
-          { name: 'id', type: 'integer', nullable: false, primaryKey: true, comment: '訂單主鍵' },
+          { name: 'id', type: 'integer', nullable: false, primaryKey: true, comment: '訂單主鍵', autoIncrement: true },
           { name: 'label', type: 'text', nullable: false },
         ],
         rows: [

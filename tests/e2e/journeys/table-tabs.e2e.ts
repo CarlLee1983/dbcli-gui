@@ -13,6 +13,9 @@ test('open a table tab, switch all five sub-tabs, then open a new query', async 
   await expect(page.getByText('id', { exact: true }).first()).toBeVisible()
   await expect(page.getByRole('columnheader', { name: '說明' })).toBeVisible()
   await expect(page.getByText('訂單主鍵')).toBeVisible()
+  // Extra column surfaces auto-increment from the schema
+  await expect(page.getByRole('columnheader', { name: 'Extra' })).toBeVisible()
+  await expect(page.getByText('AUTO_INCREMENT')).toBeVisible()
 
   // Triggers (lazy)
   await page.getByRole('button', { name: '觸發器' }).click()

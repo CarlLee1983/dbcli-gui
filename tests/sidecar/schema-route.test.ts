@@ -19,8 +19,9 @@ const TABLES: TableSchema[] = [
 const USERS_SCHEMA: TableSchema = {
   name: 'users',
   columns: [
-    { name: 'id', type: 'int', nullable: false, primaryKey: true },
+    { name: 'id', type: 'int', nullable: false, primaryKey: true, autoIncrement: true },
     { name: 'email', type: 'text', nullable: false },
+    { name: 'role', type: 'enum', nullable: false, enumValues: ['admin', 'user'], foreignKey: { table: 'roles', column: 'name' } },
     { name: 'password', type: 'text', nullable: false },
   ],
   primaryKey: ['id'],
@@ -77,7 +78,19 @@ test('POST /schema/table strips blacklisted columns', async () => {
   expect(res.status).toBe(200)
   const body = await res.json() as { table: { columns: Array<{ name: string }> } }
   const cols = body.table.columns.map((c) => c.name)
-  expect(cols).toEqual(['id', 'email']) // "password" stripped
+  expect(cols).toEqual(['id', 'email', 'role']) // "password" stripped
+})
+
+test('POST /schema/table passes through autoIncrement / foreignKey / enumValues', async () => {
+  const s = start()
+  await post(s, '/connections/open', { connectionId: 'main' })
+  const res = await post(s, '/schema/table', { connectionId: 'main', table: 'users' })
+  const body = await res.json() as { table: { columns: Array<{ name: string; autoIncrement?: boolean; foreignKey?: { table: string; column: string }; enumValues?: string[] }> } }
+  const id = body.table.columns.find((c) => c.name === 'id')
+  const role = body.table.columns.find((c) => c.name === 'role')
+  expect(id!.autoIncrement).toBe(true)
+  expect(role!.foreignKey).toEqual({ table: 'roles', column: 'name' })
+  expect(role!.enumValues).toEqual(['admin', 'user'])
 })
 
 test('POST /schema/table on a blacklisted table returns 403', async () => {

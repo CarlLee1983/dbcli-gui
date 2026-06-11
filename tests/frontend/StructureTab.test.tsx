@@ -32,3 +32,35 @@ test('renders columns without a comment without crashing', () => {
   // the comment-less "label" row still renders its name
   expect(screen.getByText('label')).toBeDefined()
 })
+
+test('renders an Extra header column', () => {
+  render(<StructureTab schema={schema()} />)
+  expect(screen.getByRole('columnheader', { name: 'Extra' })).toBeDefined()
+})
+
+test('shows AUTO_INCREMENT in Extra for an auto-incrementing column', () => {
+  render(<StructureTab schema={schema({
+    columns: [{ name: 'id', type: 'int', nullable: false, primaryKey: true, autoIncrement: true }],
+  })} />)
+  expect(screen.getByText('AUTO_INCREMENT')).toBeDefined()
+})
+
+test('omits AUTO_INCREMENT when the column is not auto-incrementing', () => {
+  render(<StructureTab schema={schema()} />)
+  expect(screen.queryByText('AUTO_INCREMENT')).toBeNull()
+})
+
+test('shows a foreign-key reference in Extra', () => {
+  render(<StructureTab schema={schema({
+    columns: [{ name: 'order_id', type: 'int', nullable: false, foreignKey: { table: 'orders', column: 'id' } }],
+  })} />)
+  expect(screen.getByText('→ orders.id')).toBeDefined()
+})
+
+test('exposes enum values as a tooltip on the type cell', () => {
+  render(<StructureTab schema={schema({
+    columns: [{ name: 'status', type: 'enum', nullable: false, enumValues: ['open', 'closed'] }],
+  })} />)
+  const typeCell = screen.getByText('enum')
+  expect(typeCell.getAttribute('title')).toBe('open | closed')
+})
