@@ -130,7 +130,7 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
         style={{ maxHeight: VIEWPORT_HEIGHT }}
       >
         <table className="w-full border-separate border-spacing-0 text-left font-mono">
-          <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
+          <thead className="sticky top-0 z-30 bg-slate-100 shadow-[0_1px_0_rgba(148,163,184,0.35)] dark:bg-slate-800 dark:shadow-[0_1px_0_rgba(51,65,85,0.9)]">
             <tr className="border-b border-slate-300 dark:border-slate-700">
               <th
                 scope="col"
@@ -145,7 +145,7 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHeaderClick(f) } }}
                   tabIndex={0}
                   aria-sort={sortField === f ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
-                  className="cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 px-3 py-2 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="cursor-pointer select-none border-b border-r border-slate-200 bg-slate-100 px-3 py-2 font-semibold text-slate-700 transition-colors hover:bg-slate-200/70 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700/70"
                 >
                   <div className="flex items-center gap-1">
                     <span>{f}</span>
@@ -167,9 +167,9 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
               <tr 
                 key={range.start + i} 
                 style={{ height: ROW_HEIGHT }} 
-                className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                className="group border-b border-slate-100 odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/70 dark:border-slate-800/50 dark:odd:bg-slate-900 dark:even:bg-slate-900/55 dark:hover:bg-blue-950/20"
               >
-                <td aria-label={`第 ${range.start + i + 1} 列`} className="sticky left-0 z-10 w-12 border-b border-r border-slate-100 bg-slate-50 px-2 py-1 text-right font-mono text-[11px] tabular-nums text-slate-400 dark:border-slate-800/60 dark:bg-slate-900 dark:text-slate-500">
+                <td aria-label={`第 ${range.start + i + 1} 列`} className="sticky left-0 z-10 w-12 border-b border-r border-slate-100 bg-inherit px-2 py-1 text-right font-mono text-[11px] tabular-nums text-slate-400 group-hover:bg-blue-50/70 dark:border-slate-800/60 dark:text-slate-500 dark:group-hover:bg-blue-950/20">
                   {range.start + i + 1}
                 </td>
                 {result.fields.map((f) => (
