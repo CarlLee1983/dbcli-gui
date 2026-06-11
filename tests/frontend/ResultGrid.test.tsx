@@ -26,6 +26,44 @@ test('renders cell values', () => {
   expect(screen.getByText('b')).toBeDefined()
 })
 
+test('distinguishes null, empty string, boolean, and object values', () => {
+  render(
+    <ResultGrid
+      result={{
+        fields: ['nil', 'empty', 'enabled', 'meta'],
+        rows: [{ nil: null, empty: '', enabled: false, meta: { plan: 'pro' } }],
+        rowCount: 1,
+        ms: 1,
+      }}
+      filter=""
+      sortField={null}
+      sortDir={null}
+      onFilterChange={noop}
+      onSort={noop}
+    />,
+  )
+  expect(screen.getByText('NULL')).toBeDefined()
+  expect(screen.getAllByText('empty').length).toBeGreaterThanOrEqual(2)
+  expect(screen.getByText('false')).toBeDefined()
+  expect(screen.getByText('{"plan":"pro"}')).toBeDefined()
+})
+
+test('right-aligns numeric cells for easier comparison', () => {
+  render(
+    <ResultGrid
+      result={{ fields: ['amount'], rows: [{ amount: 1234.5 }], rowCount: 1, ms: 1 }}
+      filter=""
+      sortField={null}
+      sortDir={null}
+      onFilterChange={noop}
+      onSort={noop}
+    />,
+  )
+  const cell = screen.getByText('1234.5').closest('td')
+  expect(cell?.className).toContain('text-right')
+  expect(cell?.className).toContain('tabular-nums')
+})
+
 test('footer shows rowCount and ms', () => {
   render(<ResultGrid result={small} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
   const footer = screen.getByRole('contentinfo')

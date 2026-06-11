@@ -18,9 +18,54 @@ export interface ResultGridProps {
   onSort(field: string, dir: SortDir): void
 }
 
-function renderCell(value: unknown): string {
+function previewValue(value: unknown): string {
   if (value === null || value === undefined) return ''
-  return typeof value === 'object' ? JSON.stringify(value) : String(value)
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function cellTone(value: unknown): string {
+  if (value === null || value === undefined) {
+    return 'text-slate-500 dark:text-slate-400'
+  }
+  if (value === '') {
+    return 'text-slate-500 dark:text-slate-400'
+  }
+  if (typeof value === 'number') {
+    return 'text-right tabular-nums text-slate-900 dark:text-slate-100'
+  }
+  if (typeof value === 'boolean') {
+    return 'text-slate-700 dark:text-slate-200'
+  }
+  if (typeof value === 'object') {
+    return 'text-indigo-700 dark:text-indigo-300'
+  }
+  return 'text-slate-800 dark:text-slate-300'
+}
+
+function renderCellContent(value: unknown) {
+  if (value === null || value === undefined) {
+    return (
+      <span className="inline-flex rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-normal text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+        NULL
+      </span>
+    )
+  }
+  if (value === '') {
+    return (
+      <span className="inline-flex rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+        empty
+      </span>
+    )
+  }
+  if (typeof value === 'boolean') {
+    return (
+      <span className={`inline-flex rounded px-1.5 py-0.5 font-mono text-[10px] ${value ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+        {String(value)}
+      </span>
+    )
+  }
+  return previewValue(value)
 }
 
 export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange, onSort }: ResultGridProps) {
@@ -132,9 +177,9 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
                     key={f}
                     data-col={f}
                     onClick={() => setDetail({ field: f, value: row[f], row })}
-                    className="cursor-pointer truncate px-3 py-1 text-slate-800 dark:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 border-b border-slate-100 dark:border-slate-800/40"
+                    className={`cursor-pointer truncate border-b border-slate-100 px-3 py-1 hover:bg-blue-50/50 dark:border-slate-800/40 dark:hover:bg-blue-950/20 ${cellTone(row[f])}`}
                   >
-                    {renderCell(row[f])}
+                    {renderCellContent(row[f])}
                   </td>
                 ))}
               </tr>
