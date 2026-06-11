@@ -98,9 +98,10 @@ test('changing the result search resets the scroll container to top', () => {
 
   const scrollContainer = screen.getByRole('table').parentElement as HTMLDivElement
   scrollContainer.scrollTop = 280
-  scrollContainer.scrollTo = (options?: ScrollToOptions) => {
-    scrollContainer.scrollTop = Number(options?.top ?? 0)
-  }
+  const scrollTo: HTMLDivElement['scrollTo'] = ((options?: ScrollToOptions | number) => {
+    if (typeof options === 'object' && options?.top !== undefined) scrollContainer.scrollTop = Number(options.top)
+  }) as HTMLDivElement['scrollTo']
+  scrollContainer.scrollTo = scrollTo
 
   fireEvent.scroll(scrollContainer)
   fireEvent.change(screen.getByRole('searchbox', { name: '搜尋結果' }), { target: { value: 'row 1' } })
