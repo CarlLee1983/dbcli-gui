@@ -28,9 +28,30 @@ test('renders cell values', () => {
 
 test('footer shows rowCount and ms', () => {
   render(<ResultGrid result={small} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
-  const footer = screen.getByText(/列/)
+  const footer = screen.getByRole('contentinfo')
   expect(footer.textContent).toContain('2')
   expect(footer.textContent).toContain('7 ms')
+})
+
+test('renders a non-interactive row number column', () => {
+  render(<ResultGrid result={small} filter="" sortField={null} sortDir={null} onFilterChange={noop} onSort={noop} />)
+  expect(screen.getByRole('columnheader', { name: '#' })).toBeDefined()
+  expect(screen.getByLabelText('第 1 列')).toBeDefined()
+  expect(screen.getByLabelText('第 2 列')).toBeDefined()
+})
+
+test('shows filtered and total row counts when a filter is active', () => {
+  render(
+    <ResultGrid
+      result={{ rows: [{ id: 1, label: 'apple' }, { id: 2, label: 'banana' }], fields: ['id', 'label'], rowCount: 2, ms: 1 }}
+      filter="app"
+      sortField={null}
+      sortDir={null}
+      onFilterChange={() => {}}
+      onSort={() => {}}
+    />,
+  )
+  expect(screen.getAllByText('顯示 1 / 共 2 列').length).toBeGreaterThan(0)
 })
 
 test('shows an empty-state hint when result is null', () => {
@@ -75,6 +96,35 @@ test('applies the controlled filter to rows', () => {
   )
   expect(screen.getByText('apple')).toBeDefined()
   expect(screen.queryByText('banana')).toBeNull()
+})
+
+test('distinguishes filter-empty results from query-empty results', () => {
+  render(
+    <ResultGrid
+      result={{ rows: [{ id: 1, label: 'apple' }], fields: ['id', 'label'], rowCount: 1, ms: 1 }}
+      filter="missing"
+      sortField={null}
+      sortDir={null}
+      onFilterChange={() => {}}
+      onSort={() => {}}
+    />,
+  )
+  expect(screen.getByText('沒有符合「missing」的資料')).toBeDefined()
+  expect(screen.queryByText('查詢傳回 0 筆資料')).toBeNull()
+})
+
+test('shows the query-empty message when the result has no rows before filtering', () => {
+  render(
+    <ResultGrid
+      result={{ rows: [], fields: ['id'], rowCount: 0, ms: 1 }}
+      filter=""
+      sortField={null}
+      sortDir={null}
+      onFilterChange={() => {}}
+      onSort={() => {}}
+    />,
+  )
+  expect(screen.getByText('查詢傳回 0 筆資料')).toBeDefined()
 })
 
 test('clicking a header calls onSort with the field', () => {

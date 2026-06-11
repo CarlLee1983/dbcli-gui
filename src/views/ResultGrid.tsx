@@ -43,7 +43,12 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
     )
   }
 
-  const range = computeVisibleRange({ scrollTop, viewportHeight: VIEWPORT_HEIGHT, rowHeight: ROW_HEIGHT, rowCount: sorted.length, overscan: OVERSCAN })
+  const totalRows = result.rows.length
+  const visibleRows = sorted.length
+  const hasFilter = filter.trim().length > 0
+  const resultSummary = hasFilter ? `顯示 ${visibleRows} / 共 ${totalRows} 列` : `共 ${totalRows} 列`
+  const tableColSpan = result.fields.length + 1
+  const range = computeVisibleRange({ scrollTop, viewportHeight: VIEWPORT_HEIGHT, rowHeight: ROW_HEIGHT, rowCount: visibleRows, overscan: OVERSCAN })
   const visible = sorted.slice(range.start, range.end)
 
   const onHeaderClick = (field: string) => {
@@ -55,17 +60,22 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
 
   return (
     <div className="flex h-full w-full flex-col bg-white dark:bg-slate-900 text-xs">
-      <div className="border-b border-slate-200 dark:border-slate-800 p-2 bg-slate-50 dark:bg-slate-900/60">
-        <div className="relative flex items-center">
-          <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-          <input
-            type="search"
-            aria-label="搜尋結果"
-            value={filter}
-            onChange={(e) => { onFilterChange(e.target.value); setScrollTop(0) }}
-            placeholder="搜尋結果…"
-            className="w-full rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-8 pr-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:border-blue-500 focus:outline-none transition-colors"
-          />
+      <div className="border-b border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="flex items-center gap-3">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <input
+              type="search"
+              aria-label="搜尋結果"
+              value={filter}
+              onChange={(e) => { onFilterChange(e.target.value); setScrollTop(0) }}
+              placeholder="搜尋結果..."
+              className="w-full rounded border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-xs text-slate-800 transition-colors focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            />
+          </div>
+          <div className="shrink-0 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+            {resultSummary}
+          </div>
         </div>
       </div>
       <div
@@ -77,6 +87,12 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
         <table className="w-full border-separate border-spacing-0 text-left font-mono">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
             <tr className="border-b border-slate-300 dark:border-slate-700">
+              <th
+                scope="col"
+                className="sticky left-0 z-20 w-12 select-none border-b border-r border-slate-200 bg-slate-100 px-2 py-2 text-right font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+              >
+                #
+              </th>
               {result.fields.map((f) => (
                 <th
                   key={f}
@@ -101,13 +117,16 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
             </tr>
           </thead>
           <tbody>
-            {range.topPad > 0 ? (<tr style={{ height: range.topPad }}><td colSpan={result.fields.length} /></tr>) : null}
+            {range.topPad > 0 ? (<tr style={{ height: range.topPad }}><td colSpan={tableColSpan} /></tr>) : null}
             {visible.map((row, i) => (
               <tr 
                 key={range.start + i} 
                 style={{ height: ROW_HEIGHT }} 
                 className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
               >
+                <td aria-label={`第 ${range.start + i + 1} 列`} className="sticky left-0 z-10 w-12 border-b border-r border-slate-100 bg-slate-50 px-2 py-1 text-right font-mono text-[11px] tabular-nums text-slate-400 dark:border-slate-800/60 dark:bg-slate-900 dark:text-slate-500">
+                  {range.start + i + 1}
+                </td>
                 {result.fields.map((f) => (
                   <td
                     key={f}
@@ -120,19 +139,19 @@ export function ResultGrid({ result, filter, sortField, sortDir, onFilterChange,
                 ))}
               </tr>
             ))}
-            {sorted.length === 0 ? (
+            {visibleRows === 0 ? (
               <tr>
-                <td colSpan={result.fields.length} className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
-                  查詢傳回 0 筆資料
+                <td colSpan={tableColSpan} className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                  {hasFilter && totalRows > 0 ? `沒有符合「${filter}」的資料` : '查詢傳回 0 筆資料'}
                 </td>
               </tr>
             ) : null}
-            {range.bottomPad > 0 ? (<tr style={{ height: range.bottomPad }}><td colSpan={result.fields.length} /></tr>) : null}
+            {range.bottomPad > 0 ? (<tr style={{ height: range.bottomPad }}><td colSpan={tableColSpan} /></tr>) : null}
           </tbody>
         </table>
       </div>
       <footer className="border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 flex justify-between items-center">
-        共 {result.rowCount} 列
+        <span>{resultSummary}</span>
         {result.ms !== null ? (
           <span className="font-mono text-[10px]">{result.ms} ms</span>
         ) : null}
